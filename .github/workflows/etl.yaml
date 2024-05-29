@@ -16,7 +16,7 @@ jobs:
         with:
           poetry-version: 1.4.1
       - name: Install dependencies
-        run: poetry install
+        run: poetry install .
       - name: run etl
         run: poetry run python -m omicidx.etl.app
         env:
