@@ -6,7 +6,6 @@ import gzip
 import tempfile
 import shutil
 
-from upath import UPath
 import re
 
 import logging
@@ -19,16 +18,10 @@ logging.basicConfig(
     handlers=[RichHandler(rich_tracebacks=True)],
 )
 
-log = logging.getLogger("rich")
-try:
-    print(1 / 0)
-except Exception:
-    log.exception("unable print!")
-
 logging.basicConfig(level=logging.INFO)
 
 
-def mirror_dirlist_for_current_month() -> list[UPath]:
+def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[UPath]:
     """return a list of UPath objects for the current month's mirror directories
 
     The NCBI SRA mirror directory is organized by date. This function finds the
@@ -45,14 +38,14 @@ def mirror_dirlist_for_current_month() -> list[UPath]:
     index = 0
     for path in pathlist:
         index += 1
-        match = re.search(r"_Full$", str(path))
-        if match:
+        match = re.search(r"_Full$", str(path.parent))
+        if match is not None and current_month_only:
             return pathlist[:index]
     return pathlist
 
 
 def get_run_logger():
-    return log
+    return logging.getLogger("sra_etl")
 
 
 def sra_parse(url: str, outfile_name: str):
