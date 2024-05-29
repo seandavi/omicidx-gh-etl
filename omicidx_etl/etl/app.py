@@ -89,12 +89,12 @@ def sra_get_urls():
             outfile_name = f"{path_part}_{json_name}"
             sra_parse(
                 url=str(url),
-                outfile_name=f"gs://omicidx-json/prefect-testing/sra/{outfile_name}",
+                outfile_name=f"s3://bioconductor/omicidx/sra/{outfile_name}",
             )
             current_gcs_objects.append(
-                UPath(f"gs://omicidx-json/prefect-testing/sra/{outfile_name}")
+                UPath(f"s3://bioconductor/omicidx/sra/{outfile_name}")
             )
-    all_objects = UPath("gs://omicidx-json/prefect-testing/sra").glob("*set.ndjson.gz")
+    all_objects = UPath("s3://bioconductor/omicidx/sra").glob("*set.ndjson.gz")
     for obj in all_objects:
         if obj not in current_gcs_objects:
             obj.unlink()
