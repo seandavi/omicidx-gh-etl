@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: run etl
-        run: poetry run python app.py
+        run: poetry run python -m omicidx.etl.app
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -1,11 +1,11 @@
 [tool.poetry]
-name = "omicidx-etl"
+name = "omicidx-gh-etl"
 version = "0.1.0"
 description = ""
 authors = ["Sean Davis <seandavi@gmail.com>"]
 license = "MIT"
 readme = "README.md"
-packages = [{include = "omicidx_etl"}]
+packages = [{include = "omicidx"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
