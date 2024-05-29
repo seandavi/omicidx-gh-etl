@@ -34,7 +34,7 @@ def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[U
     >>> mirror_dirlist_for_current_month()
     """
     u = UPath("https://ftp.ncbi.nlm.nih.gov/sra/reports/Mirroring")
-    pathlist = sorted(list(u.glob("**/")), reverse=True)
+    pathlist = sorted(list(u.glob("**/*")), reverse=True)
     index = 0
     for path in pathlist:
         index += 1
