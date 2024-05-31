@@ -12,6 +12,9 @@ omicidx = "^1.11.3"
 universal-pathlib = "^0.2.2"
 rich = "^13.7.1"
 s3fs = "^2024.5.0"
+orjson = "^3.10.3"
+pubmed-parser = {git = "https://github.com/seandavi/pubmed_parser"}
+gcsfs = "^2024.5.0"
 
 [build-system]
 requires = ["poetry-core"]

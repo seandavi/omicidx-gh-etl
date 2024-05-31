@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: 'google-github-actions/auth@v2'
       - uses: actions/setup-python@v5
         with:
           python-version: 3.9
@@ -16,7 +17,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: run etl
-        run: poetry run python -m omicidx_etl.etl.app
+        run: poetry run python -m omicidx_etl.etl.pubmed
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
