@@ -16,16 +16,16 @@ gcloud iam workload-identity-pools describe "github" \
 ```
 
 ```
-gcloud iam workload-identity-pools providers create-oidc "my-repo" \
+gcloud iam workload-identity-pools providers create-oidc "omicidx-gh-etl" \
   --project="${PROJECT_ID}" \
   --location="global" \
   --workload-identity-pool="github" \
   --display-name="My GitHub repo Provider" \
   --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
-  --attribute-condition="assertion.repository_owner == '${GITHUB_ORG}'" \
+  --attribute-condition="assertion.repository_owner == 'seandavi'" \
   --issuer-uri="https://token.actions.githubusercontent.com"
 
-gcloud iam workload-identity-pools providers describe "my-repo" \
+gcloud iam workload-identity-pools providers describe "omicidx-gh-etl" \
   --project="${PROJECT_ID}" \
   --location="global" \
   --workload-identity-pool="github" \

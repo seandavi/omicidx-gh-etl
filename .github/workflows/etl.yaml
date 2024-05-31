@@ -11,7 +11,7 @@ jobs:
       - uses: 'google-github-actions/auth@v2'
         with:
           project_id: 'my-project'
-          workload_identity_provider: 'projects/492900567997/locations/global/workloadIdentityPools/github/providers/my-repo'
+          workload_identity_provider: 'projects/492900567997/locations/global/workloadIdentityPools/github/providers/omicidx-gh-etl'
       - uses: actions/setup-python@v5
         with:
           python-version: 3.9
