@@ -20,7 +20,7 @@ jobs:
           project_id: 'omicidx-338300'
           workload_identity_provider: 'projects/492900567997/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider'
           create_credentials_file: 'true'
-          service_account: 'prefect@omicidx-338300.iam.gserviceaccount.com'
+          service_account: 'github-actions@omicidx-338300.iam.gserviceaccount.com'
       - id: 'gcloud'
         name: 'gcloud'
         run: |-
