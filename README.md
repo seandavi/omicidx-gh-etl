@@ -2,32 +2,52 @@
 
 We are using GCP to host the cloud storage associate with this project. 
 ```
+# TODO: replace ${PROJECT_ID} with your value below.
 export PROJECT_ID=omicidx-338300
+export GITHUB_ORG=seandavi
+export GITHUB_REPO=omicidx-gh-etl
 
-gcloud iam workload-identity-pools create "github" \
+gcloud iam workload-identity-pools create "github-ip" \
   --project="${PROJECT_ID}" \
   --location="global" \
   --display-name="GitHub Actions Pool"
 
-gcloud iam workload-identity-pools describe "github" \
+gcloud iam workload-identity-pools describe "github-ip" \
   --project="${PROJECT_ID}" \
   --location="global" \
   --format="value(name)"
-```
 
-```
-gcloud iam workload-identity-pools providers create-oidc "omicidx-gh-etl" \
+
+# TODO: replace ${PROJECT_ID} and ${GITHUB_ORG} with your values below.
+
+gcloud iam workload-identity-pools providers create-oidc "${GITHUB_REPO}" \
   --project="${PROJECT_ID}" \
   --location="global" \
-  --workload-identity-pool="github" \
+  --workload-identity-pool="github-ip" \
   --display-name="My GitHub repo Provider" \
   --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
-  --attribute-condition="assertion.repository_owner == 'seandavi'" \
+  --attribute-condition="assertion.repository_owner == '${GITHUB_ORG}'" \
   --issuer-uri="https://token.actions.githubusercontent.com"
 
-gcloud iam workload-identity-pools providers describe "omicidx-gh-etl" \
+# TODO: replace ${PROJECT_ID} with your value below.
+
+gcloud iam workload-identity-pools providers describe "${GITHUB_REPO}" \
   --project="${PROJECT_ID}" \
   --location="global" \
-  --workload-identity-pool="github" \
+  --workload-identity-pool="github-ip" \
   --format="value(name)"
+```
+
+
+```
+gcloud projects add-iam-policy-binding omicidx-338300 \
+  --role="roles/storage.Admin" \
+  --member="principalSet://iam.googleapis.com/projects/492900567997/locations/global/workloadIdentityPools/github-ip/attribute.repository/seandavi/omicidx-gh-etl" 
+
+
+# or with repository owner (see above for the "conditions")
+gcloud projects add-iam-policy-binding omicidx-338300 \
+  --member="principalSet://iam.googleapis.com/projects/390395656114/locations/global/workloadIdentityPools/github/attribute.repository_owner/seandavi" \
+  --role="roles/storage.Admin"   
+
 ```
