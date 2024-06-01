@@ -34,7 +34,7 @@ def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[U
     >>> mirror_dirlist_for_current_month()
     """
     u = UPath("https://ftp.ncbi.nlm.nih.gov/sra/reports/Mirroring")
-    pathlist = sorted(list(u.glob("**/*")), reverse=True)
+    pathlist = sorted(list(u.glob("*")), reverse=True)
     index = 0
     for path in pathlist:
         index += 1
@@ -89,12 +89,10 @@ def sra_get_urls():
             outfile_name = f"{path_part}_{json_name}"
             sra_parse(
                 url=str(url),
-                outfile_name=f"s3://bioconductor/omicidx/sra/{outfile_name}",
+                outfile_name=f"gs://omicidx-json/sra/{outfile_name}",
             )
-            current_gcs_objects.append(
-                UPath(f"s3://bioconductor/omicidx/sra/{outfile_name}")
-            )
-    all_objects = UPath("s3://bioconductor/omicidx/sra").glob("*set.ndjson.gz")
+            current_gcs_objects.append(UPath(f"gs://omicidx-json/sra/{outfile_name}"))
+    all_objects = UPath("gs://omicidx-json/sra").glob("*set.ndjson.gz")
     for obj in all_objects:
         if obj not in current_gcs_objects:
             obj.unlink()
