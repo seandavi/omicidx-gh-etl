@@ -1,0 +1,37 @@
+name: Reporter
+
+on:
+  # the 1st condition
+  workflow_run:
+    workflows: ["ETL for PubMed", "ETL for NCBI SRA", "ETL for biosample"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+    reporting:
+      permissions:
+        contents: 'read'
+        id-token: 'write'
+      runs-on: ubuntu-latest
+  
+      steps:
+      # actions/checkout MUST come before auth
+        - uses: 'actions/checkout@v3'
+    
+        - id: 'auth'
+          name: 'Authenticate to Google Cloud'
+          uses: 'google-github-actions/auth@v1'
+        # Update the values with the output from the setup step
+          with:
+            workload_identity_provider: projects/492900567997/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+            service_account: github-sa@omicidx-338300.iam.gserviceaccount.com
+        - run: pipx install poetry
+        - uses: actions/setup-python@v5
+          with:
+            python-version: 3.9
+            cache: 'poetry'
+        - name: Install dependencies
+          run: poetry install
+        - name: run reports
+          run: echo "Reporting"
