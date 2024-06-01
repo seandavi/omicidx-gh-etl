@@ -1,0 +1,36 @@
+name: ETL for NCBI SRA
+on: 
+  push:
+  workflow_dispatch:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 5 * * *'
+
+jobs:
+  etl:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+
+    steps:
+    # actions/checkout MUST come before auth
+      - uses: 'actions/checkout@v3'
+  
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v1'
+      # Update the values with the output from the setup step
+        with:
+          workload_identity_provider: projects/492900567997/locations/global/workloadIdentityPools/github-pool/providers/github-provider
+          service_account: github-sa@omicidx-338300.iam.gserviceaccount.com
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+      - name: Install poetry
+        run: curl -sSL https://install.python-poetry.org | python -
+      - name: Install dependencies
+        run: poetry install
+      - name: run etl
+        run: poetry run python -m omicidx_etl.etl.sra

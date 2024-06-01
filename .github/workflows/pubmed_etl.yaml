@@ -1,8 +1,13 @@
-name: Terraform using GCP Identify Federation for GitHub Action
-on: [push, workflow_dispatch]
+name: ETL for PubMed
+on: 
+  push:
+  workflow_dispatch:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 5 * * *'
 
 jobs:
-  ci:
+  etl:
     permissions:
       contents: 'read'
       id-token: 'write'
@@ -29,5 +34,3 @@ jobs:
         run: poetry install
       - name: run pubmed
         run: poetry run python -m omicidx_etl.etl.pubmed
-      - name: run sra
-        run: poetry run python -m omicidx_etl.etl.sra
