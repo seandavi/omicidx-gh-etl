@@ -27,8 +27,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.9
-          #cache: 'poetry'
+          cache: 'poetry'
       - name: Install dependencies
         run: poetry install
       - name: run biosample
-        run: poetry run python -m omicidx_etl.etl.bioasample
+        run: poetry run python -m omicidx_etl.etl.biosample
