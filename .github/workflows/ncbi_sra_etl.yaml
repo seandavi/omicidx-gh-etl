@@ -1,6 +1,5 @@
 name: ETL for NCBI SRA
 on: 
-  push:
   workflow_dispatch:
   schedule:
     # * is a special character in YAML so you have to quote this string
@@ -24,13 +23,11 @@ jobs:
         with:
           workload_identity_provider: projects/492900567997/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: github-sa@omicidx-338300.iam.gserviceaccount.com
-
+      - run: pipx install poetry
       - uses: actions/setup-python@v5
         with:
           python-version: 3.9
           cache: 'poetry'
-      - name: Install poetry
-        run: curl -sSL https://install.python-poetry.org | python -
       - name: Install dependencies
         run: poetry install
       - name: run etl
