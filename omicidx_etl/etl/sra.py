@@ -8,17 +8,7 @@ import shutil
 
 import re
 
-import logging
-from rich.logging import RichHandler
-
-logging.basicConfig(
-    level="INFO",
-    format="%(message)s",
-    datefmt="[%X]",
-    handlers=[RichHandler(rich_tracebacks=True)],
-)
-
-logging.basicConfig(level=logging.INFO)
+from ..logging import get_logger
 
 
 def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[UPath]:
@@ -45,7 +35,7 @@ def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[U
 
 
 def get_run_logger():
-    return logging.getLogger("sra_etl")
+    return get_logger("sra_etl")
 
 
 def sra_parse(url: str, outfile_name: str):

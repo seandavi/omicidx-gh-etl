@@ -5,10 +5,11 @@ import pathlib
 import fsspec
 import shutil
 import httpx
-import logging
 from upath import UPath
 
-logging.basicConfig(level=logging.INFO)
+from ..logging import get_logger
+
+logger = get_logger(__name__)
 
 PROJECT_ID = "omicidx-338300"
 DATASET_ID = "omicidx_etl"

@@ -1,4 +1,3 @@
-import logging
 from upath import UPath
 import re
 import datetime
@@ -7,13 +6,13 @@ import orjson
 from urllib.request import urlretrieve
 import tempfile
 
+from ..logging import get_logger
+
 JOB_NAME = "projects/omicidx-338300/locations/us-central1/jobs/pubmed-builder"
 PUBMED_BASE = UPath("https://ftp.ncbi.nlm.nih.gov/pubmed")
 OUTPUT_UPATH = UPath("gs://omicidx-json/pubmed")
 
-logging.basicConfig(level=logging.INFO)
-
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class PubmedManager:
