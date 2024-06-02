@@ -1,4 +1,4 @@
-name: ETL for NCBI SRA
+name: ETL for iCite
 on: 
   workflow_dispatch:
   schedule:

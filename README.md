@@ -4,6 +4,7 @@
 
 - ![Biosample](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml/badge.svg)
 - ![PubMed](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml/badge.svg)
+- ![icite](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yml/badge.svg)
 - ![SRA](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml/badge.svg)
 
 
