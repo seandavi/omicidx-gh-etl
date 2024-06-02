@@ -17,7 +17,7 @@ ICITE_COLLECTION_ID = 4586573
 
 
 def get_run_logger():
-    return logging.getLogger("icite_etl")
+    return get_logger("icite_etl")
 
 
 logger = get_run_logger()
@@ -46,8 +46,6 @@ def get_icite_article_files(article_id: str):
 def expand_tarfile(tarfname: str, dest: str) -> list[str]:
     pathlib.Path(dest).mkdir(parents=True, exist_ok=True)
 
-    fs = get_gcs_fs()
-
     with tarfile.open(tarfname) as tar:
         logger.info(f"Extracting {tarfname}")
         for fname in tar.getnames():
@@ -57,9 +55,9 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 logger.info(f"Uploading {fname} to GCS")
                 up = UPath("gs://omicidx-json/icite")
                 localfile = pathlib.Path(f"{dest}/{fname}")
-                upfile = up / localfile.name
+                upfile = up / localfile.name + ".gz"
                 with open(localfile, "rb") as lf:
-                    with upfile.open("wb") as uf:
+                    with upfile.open("wb", compression="gzip") as uf:
                         shutil.copyfileobj(lf, uf)
                 pathlib.Path(f"{dest}/{fname}").unlink(missing_ok=True)
                 pathlib.Path(tarfname).unlink(missing_ok=True)
