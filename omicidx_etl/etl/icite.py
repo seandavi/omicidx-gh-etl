@@ -54,11 +54,12 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 logger.info(f"Extracting {fname}")
                 tar.extract(fname, dest)
                 logger.info(f"Uploading {fname} to GCS")
-                fs.put(
-                    f"{dest}/{fname}",
-                    f"omicidx-json/icite/{fname}.gz",
-                    compression="gzip",
-                )
+                up = UPath("gs://omicidx-json/icite")
+                localfile = pathlib.Path(f"{dest}/{fname}")
+                upfile = up / localfile.name
+                with open(localfile, "rb") as lf:
+                    with upfile.open("wb") as uf:
+                        shutil.copyfileobj(lf, uf)
                 pathlib.Path(f"{dest}/{fname}").unlink(missing_ok=True)
                 pathlib.Path(tarfname).unlink(missing_ok=True)
 
@@ -69,7 +70,7 @@ def expand_zipfile(zipfname: str) -> str:
     logger.info(f"Extracting {zipfname}")
     with zipfile.ZipFile(zipfname) as zip:
         with zip.open("open_citation_collection.csv") as f:
-            with UPath("gs://omicidx-json/icity/open_citation_collection.csv").open(
+            with UPath("gs://omicidx-json/icite/open_citation_collection.csv").open(
                 "wb"
             ) as outfile:
                 shutil.copyfileobj(f, outfile)
