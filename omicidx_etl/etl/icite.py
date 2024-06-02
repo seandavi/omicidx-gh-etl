@@ -55,7 +55,7 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 logger.info(f"Uploading {fname} to GCS")
                 up = UPath("gs://omicidx-json/icite")
                 localfile = pathlib.Path(f"{dest}/{fname}")
-                upfile = up / localfile.name + ".gz"
+                upfile = up / str(localfile.with_suffix(".gz").name)
                 with open(localfile, "rb") as lf:
                     with upfile.open("wb", compression="gzip") as uf:
                         shutil.copyfileobj(lf, uf)
