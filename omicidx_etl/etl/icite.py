@@ -59,10 +59,8 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 with open(localfile, "rb") as lf:
                     with upfile.open("wb", compression="gzip") as uf:
                         shutil.copyfileobj(lf, uf)
-                pathlib.Path(f"{dest}/{fname}").unlink(missing_ok=True)
+                localfile.unlink(missing_ok=True)
                 pathlib.Path(tarfname).unlink(missing_ok=True)
-
-    return list([f.name for f in pathlib.Path(dest).glob("*.json")])
 
 
 def expand_zipfile(zipfname: str) -> str:
