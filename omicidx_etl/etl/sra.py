@@ -11,7 +11,10 @@ import re
 from ..logging import get_logger
 
 
-def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[UPath]:
+logger = get_logger(__name__)
+
+
+def mirror_dirlist_for_current_month(current_month_only: bool = True) -> list[UPath]:
     """return a list of UPath objects for the current month's mirror directories
 
     The NCBI SRA mirror directory is organized by date. This function finds the
@@ -34,13 +37,7 @@ def mirror_dirlist_for_current_month(current_month_only: bool = False) -> list[U
     return pathlist
 
 
-def get_run_logger():
-    return get_logger("sra_etl")
-
-
 def sra_parse(url: str, outfile_name: str):
-    logger = get_run_logger()
-
     logger.info(f"Processing {url} to {outfile_name}")
     if UPath(outfile_name).exists():
         logger.info(f"{outfile_name} already exists. Skipping")
@@ -67,6 +64,7 @@ def get_pathlist():
 def sra_get_urls():
     pathlist = get_pathlist()
     current_gcs_objects = []
+
     for parent in pathlist:
         p = parent.parent
         urls = list(p.glob("**/*xml.gz"))
@@ -85,6 +83,7 @@ def sra_get_urls():
     all_objects = UPath("gs://omicidx-json/sra").glob("*set.ndjson.gz")
     for obj in all_objects:
         if obj not in current_gcs_objects:
+            logger.info(f"Deleting old {obj}")
             obj.unlink()
 
 
