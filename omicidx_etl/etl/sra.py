@@ -45,7 +45,10 @@ def sra_parse(url: str, outfile_name: str):
 
     # while it is technically possible to stream from the URL
     # the safer way is to download the file first
-    with tempfile.NamedTemporaryFile() as tmpfile:
+    # I use the './' directory for github actions where the
+    # tempfile system is small compared to the working directory
+    # Avoids the "OSError: No space left on device"
+    with tempfile.NamedTemporaryFile(dir="./") as tmpfile:
         # download the file to a temporary file
         shutil.copyfileobj(UPath(url).open("rb"), tmpfile)
         # read the file and write to the output file
