@@ -55,7 +55,7 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 logger.info(f"Uploading {fname} to GCS")
                 up = UPath("gs://omicidx-json/icite")
                 localfile = pathlib.Path(f"{dest}/{fname}")
-                upfile = up / str(localfile.with_suffix(".gz").name)
+                upfile = up / str(localfile.with_suffix(".jsonl.gz").name)
                 with open(localfile, "rb") as lf:
                     with upfile.open("wb", compression="gzip") as uf:
                         shutil.copyfileobj(lf, uf)
@@ -97,13 +97,6 @@ def download_opencitation_file(file_json: list[dict]) -> str:
 
 def get_gcs_fs():
     return fsspec.filesystem("gs")
-
-
-def upload_to_gcs(filename: str, dest: str) -> None:
-    logger = get_run_logger()
-    logger.info(f"Uploading {filename} to {dest}")
-    fs = get_gcs_fs()
-    fs.put(filename, dest)
 
 
 def clean_out_gcs_dir(dir: str) -> None:
