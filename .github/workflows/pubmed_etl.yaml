@@ -11,6 +11,10 @@ jobs:
       contents: 'read'
       id-token: 'write'
     runs-on: ubuntu-latest
+    env:
+      CLICKHOUSE_HOST: ${{ secrets.CLICKHOUSE_HOST }}
+      CLICKHOUSE_USERNAME: ${{ secrets.CLICKHOUSE_USERNAME }}
+      CLICKHOUSE_PASSWORD: ${{ secrets.CLICKHOUSE_PASSWORD }}
 
     steps:
     # actions/checkout MUST come before auth
@@ -24,11 +28,17 @@ jobs:
           workload_identity_provider: projects/492900567997/locations/global/workloadIdentityPools/github-pool/providers/github-provider
           service_account: github-sa@omicidx-338300.iam.gserviceaccount.com
       - run: pipx install poetry
+      
       - uses: actions/setup-python@v5
         with:
           python-version: 3.9
           cache: 'poetry'
+
       - name: Install dependencies
         run: poetry install
+
       - name: run pubmed
         run: poetry run python -m omicidx_etl.etl.pubmed
+
+      - name: load to clickhouse
+        run: poetry run python -m omicidx_etl.load.pubmed_load
