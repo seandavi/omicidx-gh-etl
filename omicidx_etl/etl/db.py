@@ -4,5 +4,8 @@ from .config import settings
 
 def get_client():
     return ch.get_client(
-        host=settings.ch_host, username=settings.ch_user, password=settings.ch_password
+        host=settings.CLICKHOUSE_HOST,
+        username=settings.CLICKHOUSE_USERNAME,
+        password=settings.CLICKHOUSE_PASSWORD,
+        database=settings.CLICKHOUSE_DATABASE,
     )
