@@ -1,3 +1,4 @@
+from . import db
 from urllib.request import urlopen
 import zipfile
 import tarfile
@@ -108,6 +109,32 @@ def clean_out_gcs_dir(dir: str) -> None:
         pass
 
 
+def load_to_clickhouse():
+    logger.info("Loading to clickhouse")
+    client = db.get_client()
+    sql = """
+    CREATE OR REPLACE TABLE src_icite__metadata
+    ENGINE=MergeTree()
+    ORDER BY tuple(pmid)
+    SETTINGS storage_policy='s3_main'
+    AS
+    SELECT 
+        * EXCEPT (pmid, `references`, cited_by, cited_by_clin, authors, last_modified),
+        pmid::UInt32 AS pmid,
+        splitByWhitespace(COALESCE(`references`,'')) AS `references`,
+        splitByWhitespace(COALESCE(cited_by,'')) AS cited_by,
+        splitByWhitespace(COALESCE(cited_by_clin,'')) AS cited_by_clin,
+        splitByString(', ', COALESCE(authors,'')) AS authors,
+        parseDateTime64BestEffort(last_modified)::DateTime64 AS last_modified_at,
+        now() AS _inserted_at
+    FROM 
+    s3('https://storage.googleapis.com/omicidx-json/icite/icite_metadata_*jsonl.gz', JSONEachRow);
+    """
+    logger.info(sql)
+    res = client.command(sql)
+    logger.info("created table src_icite__metadata")
+
+
 def icite_flow() -> tuple[list[str], str]:
     """Flow to ingest icite data from figshare
 
@@ -131,6 +158,7 @@ def icite_flow() -> tuple[list[str], str]:
     clean_out_gcs_dir("omicidx-json/opencitation")
     opencitation_file = expand_zipfile(opencitation_zipfile)  # type: ignore
     icite_files = expand_tarfile(icite_tarfile, "icite")  # type: ignore
+    load_to_clickhouse()
     return icite_files, opencitation_file
 
 
