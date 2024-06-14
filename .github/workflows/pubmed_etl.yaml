@@ -41,4 +41,4 @@ jobs:
         run: poetry run python -m omicidx_etl.etl.pubmed
 
       - name: load to clickhouse
-        run: poetry run python -m omicidx_etl.load.pubmed_load
+        run: poetry run python -m omicidx_etl.etl.pubmed_load
