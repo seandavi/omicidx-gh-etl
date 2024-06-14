@@ -32,7 +32,7 @@ def load_entities_to_clickhouse():
         sql = get_sql(entity, plural_entity)
         client = db.get_client()
         res = client.command(sql)
-        summary_info = res.summary
+        summary_info = res.summary  # type: ignore
         summary_info[entity] = plural_entity
         logger.info(f"Created table {entity}")
         logger.info(summary_info)
