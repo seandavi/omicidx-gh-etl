@@ -18,6 +18,9 @@ gcsfs = "^2024.5.0"
 pydantic-settings = "^2.3.3"
 clickhouse-connect = "^0.7.12"
 
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.4"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
