@@ -1,5 +1,5 @@
-from . import db
-from .. import logging
+from .. import db
+from ... import logging
 
 logger = logging.get_logger("biosample_loader")
 

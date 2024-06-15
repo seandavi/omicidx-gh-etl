@@ -5,7 +5,7 @@ import orjson
 from upath import UPath
 import urllib.request
 
-from ..logging import get_logger
+from ...logging import get_logger
 
 logger = get_logger(__name__)
 
