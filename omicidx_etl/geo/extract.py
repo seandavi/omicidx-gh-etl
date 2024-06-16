@@ -161,7 +161,7 @@ async def geo_metadata_by_date(
     if (
         gse_path.exists() or gsm_path.exists() or gpl_path.exists()
     ) and end_date < date.today():
-        logger.info(f"Skipping {start_date} to {end_date} since it already exists")
+        logger.debug(f"Skipping {start_date} to {end_date} since it already exists")
         return
     (
         accessions_to_fetch_send,
