@@ -5,7 +5,6 @@ import faulthandler
 from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
-from prefect import task, flow
 
 import httpx
 import orjson
@@ -153,7 +152,6 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
                 offset += 5000
 
 
-@task
 async def geo_metadata_by_date(
     start_date: date = date(2000, 1, 1),
     end_date: date = date.today(),
@@ -225,7 +223,6 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
     return monthly_ranges
 
 
-@flow
 async def main():
     start = "2005-01-01"
     end = date.today().strftime("%Y-%m-%d")
