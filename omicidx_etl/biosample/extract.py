@@ -4,8 +4,9 @@ import gzip
 import orjson
 from upath import UPath
 import urllib.request
+from prefect import task, flow
 
-from ...logging import get_logger
+from ..logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -14,6 +15,7 @@ BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
 OUTPUT_DIR = "gs://omicidx-json/biosample"
 
 
+@task
 def biosample_parse(url: str, outfile_name: str):
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
@@ -24,6 +26,7 @@ def biosample_parse(url: str, outfile_name: str):
                     outfile.write(orjson.dumps(obj) + b"\n")
 
 
+@task
 def bioproject_parse(url: str, outfile_name: str):
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
@@ -34,6 +37,7 @@ def bioproject_parse(url: str, outfile_name: str):
                     outfile.write(orjson.dumps(obj) + b"\n")
 
 
+@flow
 def biosample_get_urls():
     logger.info("Parsing BioProject and BioSample")
     logger.info(f"BioProject URL: {BIO_PROJECT_URL}")
