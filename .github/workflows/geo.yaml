@@ -1,4 +1,4 @@
-name: ETL for biosample
+name: ETL for geo
 on: 
   workflow_dispatch:
   schedule:
