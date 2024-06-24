@@ -89,6 +89,7 @@ class PubmedManager:
                 nlm_category=True,
                 author_list=True,
                 reference_list=True,
+                parse_downto_mesh_subterms=True,
             )
             with self.json_file_for_url(url).open("wb", compression="gzip") as outfile:
                 logger.info(f"Writing {url} to {str(outfile)}")
