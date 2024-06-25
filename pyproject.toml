@@ -17,6 +17,8 @@ pubmed-parser = {git = "https://github.com/seandavi/pubmed_parser"}
 gcsfs = "^2024.5.0"
 pydantic-settings = "^2.3.3"
 clickhouse-connect = "^0.7.12"
+google-cloud-bigquery = "^3.24.0"
+prefect = "^2.19.6"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.4"
