@@ -45,6 +45,12 @@ jobs:
           cache: 'poetry'
       - name: Install dependencies
         run: poetry install
+
+      - name: Prefect Auth
+        uses: PrefectHQ/actions-prefect-auth@v1
+        with:
+          prefect-api-key: ${{ secrets.PREFECT_API_KEY }}
+          prefect-workspace: ${{ secrets.PREFECT_WORKSPACE }}
       - name: run etl
         run: poetry run python -m omicidx_etl.etl.sra
 
