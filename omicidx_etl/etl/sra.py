@@ -1,5 +1,7 @@
 from omicidx.sra.parser import sra_object_generator
 from upath import UPath
+from prefect import task, flow
+from google.cloud import bigquery
 
 import orjson
 import gzip
@@ -9,6 +11,7 @@ import shutil
 import re
 
 from ..logging import get_logger
+from .sra_load import load_entities_to_clickhouse
 
 
 logger = get_logger(__name__)
@@ -37,6 +40,7 @@ def mirror_dirlist_for_current_month(current_month_only: bool = True) -> list[UP
     return pathlist
 
 
+@task
 def sra_parse(url: str, outfile_name: str):
     logger.info(f"Processing {url} to {outfile_name}")
     if UPath(outfile_name).exists():
@@ -64,6 +68,29 @@ def get_pathlist():
     return mirror_dirlist_for_current_month()
 
 
+def bigquery_load(entity: str):
+    client = bigquery.Client()
+
+    schema = client.schema_from_json(f"flows/{entity}_raw.schema.json")
+
+    load_job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+        autodetect=True,
+        write_disposition="WRITE_TRUNCATE",
+        schema=schema,
+    )
+
+    uri = f"gs://omicidx-json/prefect-testing/geo/{entity}*ndjson.gz"
+    dataset = "biodatalake"
+    table = f"src_geo__{entity}"
+    job = client.load_table_from_uri(
+        uri, f"{dataset}.{table}", job_config=load_job_config
+    )
+
+    job.result()  # Waits for the job to complete.
+
+
+@flow
 def sra_get_urls():
     pathlist = get_pathlist()
     current_gcs_objects = []
@@ -88,6 +115,7 @@ def sra_get_urls():
         if obj not in current_gcs_objects:
             logger.info(f"Deleting old {obj}")
             obj.unlink()
+    load_entities_to_clickhouse()
 
 
 # register the flow

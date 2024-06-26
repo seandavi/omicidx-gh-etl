@@ -1,5 +1,6 @@
 from . import db
 from .. import logging
+from prefect import task
 
 logger = logging.get_logger("loader")
 
@@ -14,13 +15,16 @@ SETTINGS
 AS
 SELECT 
     * EXCEPT accession,
-    accession::String AS accession
+    accession::String AS accession,
+    _file,
+    _path
 FROM
 s3('https://storage.googleapis.com/omicidx-json/sra/*{entity}_set.ndjson.gz', JSONEachRow);
 """
     return sql
 
 
+@task
 def load_entities_to_clickhouse():
     entities = {
         "study": "studies",
