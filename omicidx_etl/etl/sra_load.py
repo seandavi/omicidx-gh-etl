@@ -25,7 +25,17 @@ s3('https://storage.googleapis.com/omicidx-json/sra/*{entity}_set.ndjson.gz', JS
 
 
 @task
-def load_entities_to_clickhouse():
+def load_entities_to_clickhouse(entity: str, plural_entity: str):
+    sql = get_sql(entity, plural_entity)
+    client = db.get_client()
+    res = client.command(sql)
+    summary_info = res.summary  # type: ignore
+    summary_info[entity] = plural_entity
+    logger.info(f"Created table {entity}")
+    logger.info(summary_info)
+
+
+if __name__ == "__main__":
     entities = {
         "study": "studies",
         "sample": "samples",
@@ -33,14 +43,4 @@ def load_entities_to_clickhouse():
         "run": "runs",
     }
     for entity, plural_entity in entities.items():
-        sql = get_sql(entity, plural_entity)
-        client = db.get_client()
-        res = client.command(sql)
-        summary_info = res.summary  # type: ignore
-        summary_info[entity] = plural_entity
-        logger.info(f"Created table {entity}")
-        logger.info(summary_info)
-
-
-if __name__ == "__main__":
-    load_entities_to_clickhouse()
+        load_entities_to_clickhouse(entity, plural_entity)

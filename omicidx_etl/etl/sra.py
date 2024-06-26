@@ -115,7 +115,14 @@ def sra_get_urls():
         if obj not in current_gcs_objects:
             logger.info(f"Deleting old {obj}")
             obj.unlink()
-    load_entities_to_clickhouse()
+        entities = {
+            "study": "studies",
+            "sample": "samples",
+            "experiment": "experiments",
+            "run": "runs",
+        }
+    for entity, plural_entity in entities.items():
+        load_entities_to_clickhouse(entity, plural_entity)
 
 
 # register the flow
