@@ -5,6 +5,9 @@ import pubmed_parser as pp
 import orjson
 from urllib.request import urlretrieve
 import tempfile
+from prefect import task, flow
+from .pubmed_load import load_to_bigquery
+
 
 from ..logging import get_logger
 
@@ -99,14 +102,34 @@ class PubmedManager:
                     outfile.write(orjson.dumps(obj) + b"\n")
 
 
-def get_pubmeds(replace: bool = False):
+@task(retries=1)
+def task_pubmed_manager_needed_ids(
+    pubmed_manager: PubmedManager, replace: bool = False
+):
+    return pubmed_manager.needed_ids(replace=replace)
+
+
+@task(retries=1)
+def task_pubmed_urls_to_json_file(pubmed_manager: PubmedManager, url: UPath):
+    pubmed_manager.pubmed_url_to_json_file(url)
+
+
+@task
+def load_pubmed_to_bigquery():
+    load_to_bigquery()
+
+
+@flow
+def etl_pubmeds(replace: bool = False):
     pubmed_manager = PubmedManager(PUBMED_BASE, OUTPUT_UPATH)
-    needed_urls = pubmed_manager.needed_urls(replace=replace)
+    needed_urls = task_pubmed_manager_needed_ids(pubmed_manager, replace=replace)
     logger.info(f"Processing {len(needed_urls)} urls")
-    for url in needed_urls:
+    for index, url in enumerate(needed_urls):
         logger.info("Processing url: " + str(url))
-        pubmed_manager.pubmed_url_to_json_file(url)
+        logger.info(f"Processing {index + 1} of {len(needed_urls)}")
+        task_pubmed_urls_to_json_file(pubmed_manager, url)  # type: ignore
+    load_pubmed_to_bigquery()
 
 
 if __name__ == "__main__":
-    get_pubmeds()
+    etl_pubmeds()
