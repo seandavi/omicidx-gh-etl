@@ -68,6 +68,7 @@ def get_pathlist():
     return mirror_dirlist_for_current_month()
 
 
+@task(task_run_name="load-{entity}-to-bigquery")
 def bigquery_load(entity: str):
     client = bigquery.Client()
 
@@ -115,14 +116,14 @@ def sra_get_urls():
         if obj not in current_gcs_objects:
             logger.info(f"Deleting old {obj}")
             obj.unlink()
-        entities = {
-            "study": "studies",
-            "sample": "samples",
-            "experiment": "experiments",
-            "run": "runs",
-        }
+    entities = {
+        "study": "studies",
+        "sample": "samples",
+        "experiment": "experiments",
+        "run": "runs",
+    }
     for entity, plural_entity in entities.items():
-        load_entities_to_clickhouse(entity, plural_entity)
+        bigquery_load(entity)
 
 
 # register the flow

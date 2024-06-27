@@ -24,7 +24,7 @@ s3('https://storage.googleapis.com/omicidx-json/sra/*{entity}_set.ndjson.gz', JS
     return sql
 
 
-@task(task_run_name=f"load-{entity}-to-clickhouse")
+@task(task_run_name="load-{entity}-to-clickhouse")
 def load_entities_to_clickhouse(entity: str, plural_entity: str):
     sql = get_sql(entity, plural_entity)
     client = db.get_client()
