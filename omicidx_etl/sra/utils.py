@@ -1,8 +1,32 @@
-from . import db
+from ..etl import db
 from .. import logging
 from prefect import task
+from google.cloud import bigquery
+from .schema import get_schema
 
 logger = logging.get_logger("loader")
+
+
+def bigquery_load(entity: str, plural_entity: str):
+    client = bigquery.Client()
+
+    schema = get_schema(entity)
+
+    load_job_config = bigquery.LoadJobConfig(
+        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+        autodetect=True,
+        write_disposition="WRITE_TRUNCATE",
+        schema=schema,
+    )
+
+    uri = f"gs://omicidx-json/sra/*{entity}_set.ndjson.gz"
+    dataset = "biodatalake"
+    table = f"src_sra__{plural_entity}"
+    job = client.load_table_from_uri(
+        uri, f"{dataset}.{table}", job_config=load_job_config
+    )
+
+    return job.result()  # Waits for the job to complete.
 
 
 def get_sql(entity: str, plural_entity: str) -> str:

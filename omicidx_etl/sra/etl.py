@@ -1,7 +1,8 @@
 from omicidx.sra.parser import sra_object_generator
 from upath import UPath
 from prefect import task, flow
-from google.cloud import bigquery
+from .utils import bigquery_load
+
 
 import orjson
 import gzip
@@ -11,7 +12,6 @@ import shutil
 import re
 
 from ..logging import get_logger
-from .sra_load import load_entities_to_clickhouse
 
 
 logger = get_logger(__name__)
@@ -69,26 +69,8 @@ def get_pathlist():
 
 
 @task(task_run_name="load-{entity}-to-bigquery")
-def bigquery_load(entity: str):
-    client = bigquery.Client()
-
-    schema = client.schema_from_json(f"flows/{entity}_raw.schema.json")
-
-    load_job_config = bigquery.LoadJobConfig(
-        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-        autodetect=True,
-        write_disposition="WRITE_TRUNCATE",
-        schema=schema,
-    )
-
-    uri = f"gs://omicidx-json/prefect-testing/geo/{entity}*ndjson.gz"
-    dataset = "biodatalake"
-    table = f"src_geo__{entity}"
-    job = client.load_table_from_uri(
-        uri, f"{dataset}.{table}", job_config=load_job_config
-    )
-
-    job.result()  # Waits for the job to complete.
+def task_load_entities_to_bigquery(entity: str, plural_entity: str):
+    bigquery_load(entity, plural_entity)
 
 
 @flow
@@ -123,7 +105,7 @@ def sra_get_urls():
         "run": "runs",
     }
     for entity, plural_entity in entities.items():
-        bigquery_load(entity)
+        task_load_entities_to_bigquery(entity, plural_entity)
 
 
 # register the flow
