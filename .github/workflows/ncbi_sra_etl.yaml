@@ -52,7 +52,4 @@ jobs:
           prefect-api-key: ${{ secrets.PREFECT_API_KEY }}
           prefect-workspace: ${{ secrets.PREFECT_WORKSPACE }}
       - name: run etl
-        run: poetry run python -m omicidx_etl.etl.sra
-
-      - name: load to clickhouse
-        run: poetry run python -m omicidx_etl.etl.sra_load
+        run: poetry run python -m omicidx_etl.sra.etl
