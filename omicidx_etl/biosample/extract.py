@@ -5,6 +5,7 @@ import orjson
 from upath import UPath
 import urllib.request
 from google.cloud import bigquery
+from prefect import task, flow
 
 from ..logging import get_logger
 
@@ -15,6 +16,7 @@ BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
 OUTPUT_DIR = "gs://omicidx-json/biosample"
 
 
+@task(task_run_name="load-{entity}-to-bigquery")
 def load_bioentities_to_bigquery(entity: str, plural_entity: str):
     """
     Load biosample or bioproject to BigQuery.
@@ -41,6 +43,7 @@ def load_bioentities_to_bigquery(entity: str, plural_entity: str):
     return job.result()  # Waits for the job to complete.
 
 
+@task
 def biosample_parse(url: str, outfile_name: str):
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
@@ -51,6 +54,7 @@ def biosample_parse(url: str, outfile_name: str):
                     outfile.write(orjson.dumps(obj) + b"\n")
 
 
+@task
 def bioproject_parse(url: str, outfile_name: str):
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
@@ -61,6 +65,7 @@ def bioproject_parse(url: str, outfile_name: str):
                     outfile.write(orjson.dumps(obj) + b"\n")
 
 
+@flow
 def process_biosamaple_and_bioproject():
     logger.info("Parsing BioProject and BioSample")
     logger.info(f"BioProject URL: {BIO_PROJECT_URL}")
