@@ -33,7 +33,7 @@ def load_bioentities_to_bigquery(entity: str, plural_entity: str):
         write_disposition="WRITE_TRUNCATE",
     )
 
-    uri = f"gs://omicidx-json/biosample/{entity}.ndjson.gz"
+    uri = f"gs://omicidx-json/biosample/{entity}-*.ndjson.gz"
     dataset = "biodatalake"
     table = f"src_ncbi__{plural_entity}"
     job = client.load_table_from_uri(
@@ -44,25 +44,71 @@ def load_bioentities_to_bigquery(entity: str, plural_entity: str):
 
 
 @task
-def biosample_parse(url: str, outfile_name: str):
+def biosample_parse(url: str):
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
         tmpfile.seek(0)
+
+        # clean up old output files
+        for f in UPath(OUTPUT_DIR).glob("biosample*.gz"):
+            f.unlink()
+
+        obj_counter = 0
+        file_counter = 0
+        max_lines_per_file = 100000
+
+        outfile_path = UPath(OUTPUT_DIR) / f"biosample-{file_counter:06}.ndjson.gz"
+        outfile = UPath(outfile_path).open("wb", compression="gzip")
+
         with gzip.open(tmpfile.name, "rb") as fh:
-            with UPath(outfile_name).open("wb", compression="gzip") as outfile:
-                for obj in BioSampleParser(fh, validate_with_schema=False):  # type: ignore
-                    outfile.write(orjson.dumps(obj) + b"\n")
+            for obj in BioSampleParser(fh, validate_with_schema=False):  # type: ignore
+                if obj_counter >= max_lines_per_file:
+                    outfile.close()
+                    file_counter += 1
+                    outfile_path = (
+                        UPath(OUTPUT_DIR) / f"biosample-{file_counter:06}.ndjson.gz"
+                    )
+                    outfile = UPath(outfile_path).open("wb", compression="gzip")
+                    obj_counter = 0
+
+                outfile.write(orjson.dumps(obj) + b"\n")
+                obj_counter += 1
+
+        outfile.close()
 
 
 @task
-def bioproject_parse(url: str, outfile_name: str):
+def bioproject_parse(url: str):
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
         tmpfile.seek(0)
+
+        # clean up old output files
+        for f in UPath(OUTPUT_DIR).glob("bioproject*.gz"):
+            f.unlink()
+
+        obj_counter = 0
+        file_counter = 0
+        max_lines_per_file = 100000
+
+        outfile_path = UPath(OUTPUT_DIR) / f"bioproject-{file_counter:06}.ndjson.gz"
+        outfile = UPath(outfile_path).open("wb", compression="gzip")
+
         with open(tmpfile.name, "rb") as fh:
-            with UPath(outfile_name).open("wb", compression="gzip") as outfile:
-                for obj in BioProjectParser(fh, validate_with_schema=False):
-                    outfile.write(orjson.dumps(obj) + b"\n")
+            for obj in BioProjectParser(fh, validate_with_schema=False):  # type: ignore
+                if obj_counter >= max_lines_per_file:
+                    outfile.close()
+                    file_counter += 1
+                    outfile_path = (
+                        UPath(OUTPUT_DIR) / f"bioproject-{file_counter:06}.ndjson.gz"
+                    )
+                    outfile = UPath(outfile_path).open("wb", compression="gzip")
+                    obj_counter = 0
+
+                outfile.write(orjson.dumps(obj) + b"\n")
+                obj_counter += 1
+
+        outfile.close()
 
 
 @flow
@@ -71,14 +117,12 @@ def process_biosamaple_and_bioproject():
     logger.info(f"BioProject URL: {BIO_PROJECT_URL}")
     bioproject_parse(
         url=BIO_PROJECT_URL,
-        outfile_name=f"{OUTPUT_DIR}/bioproject.ndjson.gz",
     )
     logger.info("BioSample output to gs://omicidx-json/biosample/bioproject.ndjson.gz")
     logger.info(f"BioSample URL: {BIO_SAMPLE_URL}")
     load_bioentities_to_bigquery("bioproject", "bioprojects")
     biosample_parse(
         url=BIO_SAMPLE_URL,
-        outfile_name=f"{OUTPUT_DIR}/biosample.ndjson.gz",
     )
     logger.info("BioSample output to gs://omicidx-json/biosample/biosample.ndjson.gz")
     logger.info("Done")

@@ -35,7 +35,4 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: run biosample
-        run: poetry run python -m omicidx_etl.biosample.extract
-
-      - name: load to clickhouse
-        run: poetry run python -m omicidx_etl.biosample.load
+        run: poetry run python -m omicidx_etl.biosample.etl
