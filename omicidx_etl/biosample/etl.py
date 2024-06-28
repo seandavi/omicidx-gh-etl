@@ -8,6 +8,7 @@ from google.cloud import bigquery
 from prefect import task, flow
 
 from ..logging import get_logger
+from .schema import get_schema
 
 logger = get_logger(__name__)
 
@@ -29,7 +30,7 @@ def load_bioentities_to_bigquery(entity: str, plural_entity: str):
     client = bigquery.Client()
     load_job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
-        autodetect=True,
+        schema=get_schema(entity),
         write_disposition="WRITE_TRUNCATE",
     )
 
@@ -126,8 +127,9 @@ def process_biosamaple_and_bioproject():
     )
     logger.info("BioSample output to gs://omicidx-json/biosample/biosample.ndjson.gz")
     logger.info("Done")
-    logger.info("Loading BioSample to BigQuery")
+    logger.info("Loading BioProject and BioSample to BigQuery")
     load_bioentities_to_bigquery("biosample", "biosamples")
+    load_bioentities_to_bigquery("bioproject", "bioprojects")
 
 
 if __name__ == "__main__":
