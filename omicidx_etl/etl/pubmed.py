@@ -106,7 +106,7 @@ class PubmedManager:
 def task_pubmed_manager_needed_ids(
     pubmed_manager: PubmedManager, replace: bool = False
 ):
-    return pubmed_manager.needed_ids(replace=replace)
+    return pubmed_manager.needed_urls(replace=replace)
 
 
 @task(retries=1)
