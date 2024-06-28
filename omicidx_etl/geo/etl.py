@@ -5,6 +5,7 @@ import faulthandler
 from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
+from prefect import task, flow
 
 import httpx
 import orjson
@@ -13,6 +14,8 @@ from anyio.streams.memory import MemoryObjectSendStream, MemoryObjectReceiveStre
 from omicidx.geo import parser as gp
 from tenacity import retry
 import tenacity
+
+from .load import load_to_bigquery
 
 logging.basicConfig(level=logging.INFO)
 
@@ -42,7 +45,6 @@ async def get_geo_soft(accession, client) -> str:
     return response.text
 
 
-# @task
 async def fetch_geo_soft_worker(
     accessions_to_fetch_receive: MemoryObjectReceiveStream,  # from entrez search
     entity_text_to_process_send: MemoryObjectSendStream,  # to process_entitity_worker
@@ -152,6 +154,7 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
                 offset += 5000
 
 
+@task(task_run_name="metadata-by-date--{start_date}-{end_date}")
 async def geo_metadata_by_date(
     start_date: date = date(2000, 1, 1),
     end_date: date = date.today(),
@@ -195,6 +198,7 @@ async def geo_metadata_by_date(
             tg.start_soon(prod1, accessions_to_fetch_send.clone(), start_date, end_date)
 
 
+@task
 def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
     """
     Given a start and end date, returns a list of tuples representing the start and end dates of each month in the range.
@@ -223,25 +227,24 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
     return monthly_ranges
 
 
+@task
+def task_load_to_bigquery(entity: str):
+    return load_to_bigquery(entity)
+
+
+@flow
 async def main():
+    logger = get_run_logger()
     start = "2005-01-01"
     end = date.today().strftime("%Y-%m-%d")
     ranges = get_monthly_ranges(start, end)
     for start_date, end_date in ranges:
         await geo_metadata_by_date(start_date, end_date)
+    for entity in ["gse", "gsm", "gpl"]:
+        job_result = task_load_to_bigquery(entity)
+        logger.info(f"Loaded {entity} to BigQuery")
+        logger.info(str(job_result))
 
 
 if __name__ == "__main__":
     anyio.run(main)
-    #
-    # from prefect.deployments import DeploymentImage
-    #
-    # get_geo_entrez_ids.deploy(
-    #     name="get-geo-entrez-ids",
-    #     work_pool_name="kpool",
-    #     image=DeploymentImage(
-    #         name="us-central1-docker.pkg.dev/omicidx-338300/prefect-images/geo:latest",
-    #         platform="linux/amd64",
-    #     ),
-    # )
-    #
