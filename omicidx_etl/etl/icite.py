@@ -7,6 +7,8 @@ import fsspec
 import shutil
 import httpx
 from upath import UPath
+from google.cloud import bigquery
+from prefect import task, flow
 
 from ..logging import get_logger
 
@@ -24,6 +26,7 @@ def get_run_logger():
 logger = get_run_logger()
 
 
+@task
 def get_icite_collection_articles() -> list[dict[str, str]]:
     with httpx.Client(timeout=60) as client:
         response = client.get(
@@ -34,6 +37,7 @@ def get_icite_collection_articles() -> list[dict[str, str]]:
         return response.json()
 
 
+@task
 def get_icite_article_files(article_id: str):
     with httpx.Client(timeout=60) as client:
         response = client.get(
@@ -44,6 +48,7 @@ def get_icite_article_files(article_id: str):
         return response.json()
 
 
+@task
 def expand_tarfile(tarfname: str, dest: str) -> list[str]:
     pathlib.Path(dest).mkdir(parents=True, exist_ok=True)
 
@@ -64,6 +69,7 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 pathlib.Path(tarfname).unlink(missing_ok=True)
 
 
+@task
 def expand_zipfile(zipfname: str) -> str:
     logger.info(f"Extracting {zipfname}")
     with zipfile.ZipFile(zipfname) as zip:
@@ -75,6 +81,7 @@ def expand_zipfile(zipfname: str) -> str:
     return "open_citation_collection.csv"
 
 
+@task
 def download_icite_file(file_json: list[dict]) -> str:
     url = list(filter(lambda x: x["name"] == "icite_metadata.tar.gz", file_json))[0][
         "download_url"
@@ -85,6 +92,7 @@ def download_icite_file(file_json: list[dict]) -> str:
     return "icite_metadata.tar.gz"
 
 
+@task
 def download_opencitation_file(file_json: list[dict]) -> str:
     url = list(
         filter(lambda x: x["name"] == "open_citation_collection.zip", file_json)
@@ -135,6 +143,22 @@ def load_to_clickhouse():
     logger.info("created table src_icite__metadata")
 
 
+@task
+def load_to_bigquery():
+    client = bigquery.Client()
+    job_config = bigquery.LoadJobConfig(
+        autodetect=True,
+        source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+        write_disposition="WRITE_TRUNCATE",
+    )
+    uri = "gs://omicidx-json/icite/icite*jsonl.gz"
+    table_id = f"{PROJECT_ID}.{DATASET_ID}.src_icite"
+    load_job = client.load_table_from_uri(uri, table_id, job_config=job_config)
+    load_job.result()
+    logger.info(f"Loaded {load_job.output_rows} rows to {table_id}")
+
+
+@flow
 def icite_flow() -> tuple[list[str], str]:
     """Flow to ingest icite data from figshare
 
