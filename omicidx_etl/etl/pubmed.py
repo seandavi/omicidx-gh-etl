@@ -103,7 +103,7 @@ class PubmedManager:
 
 
 @task(retries=1)
-def task_pubmed_manager_needed_ids(
+def task_pubmed_manager_needed_urls(
     pubmed_manager: PubmedManager, replace: bool = False
 ):
     return pubmed_manager.needed_urls(replace=replace)
@@ -122,7 +122,7 @@ def load_pubmed_to_bigquery():
 @flow
 def etl_pubmeds(replace: bool = False):
     pubmed_manager = PubmedManager(PUBMED_BASE, OUTPUT_UPATH)
-    needed_urls = task_pubmed_manager_needed_ids(pubmed_manager, replace=replace)
+    needed_urls = task_pubmed_manager_needed_urls(pubmed_manager, replace=replace)
     logger.info(f"Processing {len(needed_urls)} urls")
     for index, url in enumerate(needed_urls):
         logger.info("Processing url: " + str(url))
