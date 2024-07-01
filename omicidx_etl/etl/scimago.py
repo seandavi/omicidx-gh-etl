@@ -31,12 +31,15 @@ def ingest_scimago_flow() -> None:
         source_format="NEWLINE_DELIMITED_JSON",
     )
     client = bigquery.Client()
+    table_ref = bigquery.TableReference.from_string(
+        f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
+    )
     res = client.load_table_from_file(
         open("scimago.ndjson.gz", "rb"),
-        destination=f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}",
+        destination=table_ref,
         job_config=job_config,
     )
-    get_run_logger().info(f"Loaded Scimago to BigQuery table {res.table_id}")
+    get_run_logger().info(f"Loaded Scimago to BigQuery table {table_ref}")
     get_run_logger().info(res.result())
     Path("scimago.ndjson.gz").unlink()
 
