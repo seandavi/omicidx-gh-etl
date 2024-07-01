@@ -19,6 +19,7 @@ pydantic-settings = "^2.3.3"
 clickhouse-connect = "^0.7.12"
 google-cloud-bigquery = "^3.24.0"
 prefect = "3.0.0rc9"
+pandas = "^2.2.2"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.4"
