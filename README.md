@@ -5,7 +5,7 @@
 - [![Biosample](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml)
 - [![PubMed](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml)
 - [![icite](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml)
-- [![GEO](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml}
+- [![GEO](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml)
 - [![SRA](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml)
 - [![Scimago](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml)
 
