@@ -6,6 +6,7 @@
 - ![PubMed](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml/badge.svg)
 - ![icite](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml/badge.svg)
 - ![SRA](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml/badge.svg)
+- [![Scimago](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/scimago.yaml)
 
 
 ## Infrastructure setup
