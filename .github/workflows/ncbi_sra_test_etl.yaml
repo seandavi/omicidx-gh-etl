@@ -31,7 +31,7 @@ jobs:
       - name: remove old stuff
         run: |
           du -sh /home/runner/work/omicidx-gh-etl
-          rm -rf /home/runner/work/omicidx-gh-etl
+          rm -rf /home/runner/work/omicidx-gh-etl/omicidx-gh-etl/*
           df -h
 
       - uses: 'actions/checkout@v3'
