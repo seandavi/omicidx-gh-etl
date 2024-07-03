@@ -13,7 +13,6 @@ import re
 
 from ..logging import get_logger
 
-
 logger = get_logger(__name__)
 
 
@@ -30,7 +29,7 @@ def mirror_dirlist_for_current_month(current_month_only: bool = True) -> list[UP
     >>> mirror_dirlist_for_current_month()
     """
     u = UPath("https://ftp.ncbi.nlm.nih.gov/sra/reports/Mirroring")
-    pathlist = sorted(list(u.glob("*")), reverse=True)
+    pathlist = sorted(list(u.glob("**/")), reverse=True)
     index = 0
     for path in pathlist:
         index += 1
@@ -81,6 +80,7 @@ def sra_get_urls():
     for parent in pathlist:
         p = parent.parent
         urls = list(p.glob("**/*xml.gz"))
+        logger.info(f"Processing {urls}")
         for url in urls:
             if url.name == "meta_analysis_set.xml.gz":
                 continue
