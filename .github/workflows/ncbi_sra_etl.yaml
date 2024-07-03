@@ -42,7 +42,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.9
-          cache: 'poetry'
+          # cache: 'poetry' # disable caching to see about free space issue
       - name: Install dependencies
         run: poetry install
 
