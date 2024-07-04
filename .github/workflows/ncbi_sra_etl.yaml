@@ -10,7 +10,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     env:
       CLICKHOUSE_HOST: ${{ secrets.CLICKHOUSE_HOST }}
       CLICKHOUSE_USERNAME: ${{ secrets.CLICKHOUSE_USERNAME }}
@@ -18,12 +18,12 @@ jobs:
     
     steps:
     # actions/checkout MUST come before auth
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 512
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
+      #- name: Maximize build space
+      #  uses: easimon/maximize-build-space@master
+      #  with:
+      #    root-reserve-mb: 512
+      #    swap-size-mb: 1024
+      #    remove-dotnet: 'true'
       - name: Check free space
         run: |
           echo "Free space:"
