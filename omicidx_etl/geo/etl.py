@@ -93,7 +93,8 @@ async def write_geo_entity_worker(
         async for text in entity_text_to_process_receive:
             lines = [x.strip() for x in text.split("\n")]
             entity = gp._parse_single_entity_soft(lines)
-            pass
+            if entity is None:
+                continue
             if entity.accession.startswith("GSE"):  # type: ignore
                 if gse_f is None:
                     gse_f = gse_path.open("wb", compression="gzip")
