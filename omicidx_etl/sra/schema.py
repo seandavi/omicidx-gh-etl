@@ -27,6 +27,7 @@ schema["run"] = [
             bigquery.SchemaField("uuid", "STRING", mode="NULLABLE"),
         ],
     ),
+    bigquery.SchemaField("GEO", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("run_center", "STRING", mode="NULLABLE"),
     bigquery.SchemaField("run_date", "TIMESTAMP", mode="NULLABLE"),
     bigquery.SchemaField("title", "STRING", mode="NULLABLE"),
