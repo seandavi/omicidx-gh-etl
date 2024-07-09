@@ -8,7 +8,7 @@ packages = [{include = "omicidx_etl"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
-omicidx = "^1.12.0"
+omicidx = "^1.13.0"
 universal-pathlib = "^0.2.2"
 rich = "^13.7.1"
 s3fs = "^2023.0.0"
