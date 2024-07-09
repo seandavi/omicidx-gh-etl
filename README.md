@@ -2,12 +2,14 @@
 
 ## ETL status badges
 
-- [![Biosample](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml)
-- [![PubMed](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml)
-- [![icite](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml)
-- [![GEO](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml)
-- [![SRA](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml)
-- [![Scimago](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml)
+| Workflow | Description |
+|-------|------| 
+| [![Biosample](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_biosample.yaml) | All metadata from the NCBI Biosample and Bioproject databases |
+| [![PubMed](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/pubmed_etl.yaml) | PubMed metadata and abstracts |
+| [![icite](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/icite.yaml) | NIH iCite resource for article impact and citations |
+| [![GEO](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/geo.yaml) | All metadata from NCBI Gene Expression Omnibus (GEO) |
+| [![SRA](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/ncbi_sra_etl.yaml) | All metadata from NCBI Sequence Read Archive (SRA) |
+| [![Scimago](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml/badge.svg)](https://github.com/seandavi/omicidx-gh-etl/actions/workflows/scimago.yaml) | the Scimago Journal Impact Factor database | 
 
 
 ## Infrastructure setup
