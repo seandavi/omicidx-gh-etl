@@ -14,7 +14,6 @@
 
 ## Components
 
-### Bioproject and Biosample
 
 ```
 Table omicidx-338300:biodatalake.src_ncbi__biosamples
