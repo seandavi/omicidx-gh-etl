@@ -69,6 +69,17 @@ schema["bioproject"] = [
             bigquery.SchemaField("category", "STRING", mode="NULLABLE"),
         ],
     ),
+    bigquery.SchemaField(
+        "locus_tags",
+        "RECORD",
+        mode="REPEATED",
+        fields=[
+            bigquery.SchemaField("biosample_id", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("assembly_id", "STRING", mode="NULLABLE"),
+            bigquery.SchemaField("value", "STRING", mode="NULLABLE"),
+        ],
+    ),
+    bigquery.SchemaField("release_date", "TIMESTAMP", mode="NULLABLE"),
     bigquery.SchemaField("title", "STRING", mode="NULLABLE"),
 ]
 
