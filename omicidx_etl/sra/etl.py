@@ -2,6 +2,7 @@ from omicidx.sra.parser import sra_object_generator
 from upath import UPath
 from prefect import task, flow
 from .utils import bigquery_load
+from ..config import settings
 
 
 import orjson
@@ -14,6 +15,9 @@ import re
 from ..logging import get_logger
 
 logger = get_logger(__name__)
+
+OUTPUT_PATH = UPath(settings.PUBLISH_DIRECTORY) / "sra"
+OUTPUT_DIR = str(OUTPUT_PATH)
 
 
 def mirror_dirlist_for_current_month(current_month_only: bool = True) -> list[UPath]:
@@ -90,10 +94,10 @@ def sra_get_urls():
             outfile_name = f"{path_part}_{json_name}"
             sra_parse(
                 url=str(url),
-                outfile_name=f"gs://omicidx-json/sra/{outfile_name}",
+                outfile_name=f"{OUTPUT_DIR}/{outfile_name}",
             )
-            current_gcs_objects.append(UPath(f"gs://omicidx-json/sra/{outfile_name}"))
-    all_objects = UPath("gs://omicidx-json/sra").glob("*set.ndjson.gz")
+            current_gcs_objects.append(UPath(f"{OUTPUT_DIR}/{outfile_name}"))
+    all_objects = UPath(OUTPUT_DIR).glob("*set.ndjson.gz")
     for obj in all_objects:
         if obj not in current_gcs_objects:
             logger.info(f"Deleting old {obj}")
@@ -104,8 +108,8 @@ def sra_get_urls():
         "experiment": "experiments",
         "run": "runs",
     }
-    for entity, plural_entity in entities.items():
-        task_load_entities_to_bigquery(entity, plural_entity)
+    # for entity, plural_entity in entities.items():
+    #    task_load_entities_to_bigquery(entity, plural_entity)
 
 
 # register the flow
