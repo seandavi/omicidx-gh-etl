@@ -1,0 +1,43 @@
+name: Reusable workflow example
+
+on:
+  workflow_call:
+    inputs:
+      module_to_run:
+        # this will be used in `poetry run python -m {{ inputs.module_to_run }}`
+        required: true
+        type: string
+
+jobs:
+  etl:
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    env:
+      CLICKHOUSE_HOST: ${{ secrets.CLICKHOUSE_HOST }}
+      CLICKHOUSE_USERNAME: ${{ secrets.CLICKHOUSE_USERNAME }}
+      CLICKHOUSE_PASSWORD: ${{ secrets.CLICKHOUSE_PASSWORD }}
+      PUBLISH_DIRECTORY: "gs://omicidx"
+
+    steps:
+    # actions/checkout MUST come before auth
+      - uses: 'actions/checkout@v3'
+  
+      - id: 'auth'
+        name: 'Authenticate to Google Cloud'
+        uses: 'google-github-actions/auth@v2'
+      # Update the values with the output from the setup step
+        with:
+          workload_identity_provider: projects/357925011908/locations/global/workloadIdentityPools/github/providers/omicidx-gh-etl
+          project_id: gap-som-dbmi-sd-app-fq9
+          
+      - run: pipx install poetry
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.9
+          cache: 'poetry'
+      - name: Install dependencies
+        run: poetry install
+      - name: Running ${{ inputs.module_to_run }}
+        run: poetry run python -m ${{ inputs.module_to_run }}
