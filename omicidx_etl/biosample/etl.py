@@ -6,6 +6,7 @@ from upath import UPath
 import urllib.request
 from google.cloud import bigquery
 from prefect import task, flow
+from ..config import settings
 
 from ..logging import get_logger
 from .schema import get_schema
@@ -14,7 +15,8 @@ logger = get_logger(__name__)
 
 BIO_SAMPLE_URL = "https://ftp.ncbi.nlm.nih.gov/biosample/biosample_set.xml.gz"
 BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
-OUTPUT_DIR = "gs://omicidx-json/biosample"
+OUTPUT_PATH = UPath(settings.PUBLISH_DIRECTORY) / "biosample"
+OUTPUT_DIR = str(OUTPUT_PATH)
 
 
 @task(task_run_name="load-{entity}-to-bigquery")
@@ -121,15 +123,15 @@ def process_biosamaple_and_bioproject():
     )
     logger.info("BioSample output to gs://omicidx-json/biosample/bioproject.ndjson.gz")
     logger.info(f"BioSample URL: {BIO_SAMPLE_URL}")
-    load_bioentities_to_bigquery("bioproject", "bioprojects")
+    # load_bioentities_to_bigquery("bioproject", "bioprojects")
     biosample_parse(
         url=BIO_SAMPLE_URL,
     )
     logger.info("BioSample output to gs://omicidx-json/biosample/biosample.ndjson.gz")
     logger.info("Done")
     logger.info("Loading BioProject and BioSample to BigQuery")
-    load_bioentities_to_bigquery("biosample", "biosamples")
-    load_bioentities_to_bigquery("bioproject", "bioprojects")
+    # load_bioentities_to_bigquery("biosample", "biosamples")
+    # load_bioentities_to_bigquery("bioproject", "bioprojects")
 
 
 if __name__ == "__main__":
