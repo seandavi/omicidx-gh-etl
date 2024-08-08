@@ -1,0 +1,22 @@
+name: Daily ETL
+on: 
+  workflow_dispatch:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    - cron:  '0 15 * * *'
+
+jobs:
+  call-reusable-workflow:
+    strategy:
+      matrix:
+        module_to_run: 
+          - omicidx_etl.biosample.etl
+          - omicidx_etl.geo.etl
+          - omicidx_etl.sra.etl
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    uses: ./.github/workflows/base_runner.yaml
+    with:
+      module_to_run: ${{ matrix.module_to_run }}
+    secrets: inherit
