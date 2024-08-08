@@ -31,7 +31,7 @@ jobs:
         with:
           workload_identity_provider: projects/357925011908/locations/global/workloadIdentityPools/github/providers/omicidx-gh-etl
           project_id: gap-som-dbmi-sd-app-fq9
-          
+         
       - run: pipx install poetry
       - uses: actions/setup-python@v5
         with:
@@ -39,5 +39,10 @@ jobs:
           cache: 'poetry'
       - name: Install dependencies
         run: poetry install
+      - name: Prefect Auth
+        uses: PrefectHQ/actions-prefect-auth@v1
+        with:
+          prefect-api-key: ${{ secrets.PREFECT_API_KEY }}
+          prefect-workspace: ${{ secrets.PREFECT_WORKSPACE }}
       - name: Running ${{ inputs.module_to_run }}
         run: poetry run python -m ${{ inputs.module_to_run }}
