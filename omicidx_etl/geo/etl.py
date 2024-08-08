@@ -6,6 +6,7 @@ from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
 from prefect import task, flow
+from ..config import settings
 
 import httpx
 import orjson
@@ -18,6 +19,9 @@ import tenacity
 from .load import load_to_bigquery
 
 logging.basicConfig(level=logging.INFO)
+
+OUTPUT_PATH = UPath(settings.PUBLISH_DIRECTORY) / "geo"
+OUTPUT_DIR = str(OUTPUT_PATH)
 
 
 def get_run_logger():
@@ -62,7 +66,7 @@ async def fetch_geo_soft_worker(
 
 
 async def get_result_paths(start_date, end_date):
-    basepath = UPath("gs://omicidx-json/prefect-testing/geo")
+    basepath = OUTPUT_PATH
     gse_path = (
         basepath
         / f"gse-{start_date.strftime('%Y-%m-%d')}_{end_date.strftime('%Y-%m-%d')}.ndjson.gz"
@@ -134,7 +138,7 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
     async with accessions_to_fetch_send:
         while True:
             async with httpx.AsyncClient(timeout=60) as client:
-                logger.info(f"Fetching {start_date} to {end_date} offset {offset}")
+                logger.debug(f"Fetching {start_date} to {end_date} offset {offset}")
                 response = await client.get(
                     "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
                     params={
@@ -147,7 +151,6 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
                 )
                 response.raise_for_status()
                 json_results = response.json()
-                logger.info(f'Total count: {json_results["esearchresult"]["count"]}')
                 for id in json_results["esearchresult"]["idlist"]:
                     await accessions_to_fetch_send.send(entrezid_to_geo(id))
                 if len(json_results["esearchresult"]["idlist"]) < RETMAX:
