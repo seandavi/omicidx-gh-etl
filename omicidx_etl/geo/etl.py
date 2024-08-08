@@ -244,10 +244,12 @@ async def main():
     ranges = get_monthly_ranges(start, end)
     for start_date, end_date in ranges:
         await geo_metadata_by_date(start_date, end_date)
-    for entity in ["gse", "gsm", "gpl"]:
-        job_result = task_load_to_bigquery(entity)
-        logger.info(f"Loaded {entity} to BigQuery")
-        logger.info(str(job_result))
+
+    # for later
+    # for entity in ["gse", "gsm", "gpl"]:
+    #     job_result = task_load_to_bigquery(entity)
+    #     logger.info(f"Loaded {entity} to BigQuery")
+    #     logger.info(str(job_result))
 
 
 if __name__ == "__main__":
