@@ -13,7 +13,7 @@ from ..logging import get_logger
 
 JOB_NAME = "projects/omicidx-338300/locations/us-central1/jobs/pubmed-builder"
 PUBMED_BASE = UPath("https://ftp.ncbi.nlm.nih.gov/pubmed")
-OUTPUT_UPATH = UPath("gs://omicidx-json/pubmed")
+OUTPUT_UPATH = UPath("gs://omicidx/pubmed")
 
 logger = get_logger(__name__)
 

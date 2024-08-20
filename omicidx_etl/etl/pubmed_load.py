@@ -96,8 +96,8 @@ def load_to_bigquery():
         schema=schema,
     )
 
-    uri = "gs://omicidx-json/pubmed/*jsonl.gz"
-    dataset = "biodatalake"
+    uri = "gs://omicidx/pubmed/*jsonl.gz"
+    dataset = "omicidx"
     table = "src_pubmed__metadata"
     job = client.load_table_from_uri(
         uri, f"{dataset}.{table}", job_config=load_job_config
