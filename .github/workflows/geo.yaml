@@ -26,8 +26,8 @@ jobs:
         uses: 'google-github-actions/auth@v1'
       # Update the values with the output from the setup step
         with:
-          workload_identity_provider: projects/492900567997/locations/global/workloadIdentityPools/github-pool/providers/github-provider
-          service_account: github-sa@omicidx-338300.iam.gserviceaccount.com
+          workload_identity_provider: projects/357925011908/locations/global/workloadIdentityPools/github/providers/omicidx-gh-etl
+          service_account: main-48@gap-som-dbmi-sd-app-fq9.iam.gserviceaccount.com
       - run: pipx install poetry
       - uses: actions/setup-python@v5
         with:
