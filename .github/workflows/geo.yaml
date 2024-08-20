@@ -12,7 +12,7 @@ jobs:
       id-token: 'write'
     uses: ./.github/workflows/base_runner.yaml
     with:
-      module_to_run: omicidx_etl.geo.etl
+      module_to_run: omicidx_etl.etl.pubmed
     secrets: inherit
 
 
