@@ -19,8 +19,8 @@ def load_to_bigquery(entity: str):
         schema=schema,
     )
 
-    uri = f"gs://omicidx-json/prefect-testing/geo/{entity}*ndjson.gz"
-    dataset = "biodatalake"
+    uri = f"gs://omicidx/geo/{entity}*ndjson.gz"
+    dataset = "omicidx"
     table = f"src_geo__{entity}"
     job = client.load_table_from_uri(
         uri, f"{dataset}.{table}", job_config=load_job_config

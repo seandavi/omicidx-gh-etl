@@ -108,8 +108,8 @@ def sra_get_urls():
         "experiment": "experiments",
         "run": "runs",
     }
-    # for entity, plural_entity in entities.items():
-    #    task_load_entities_to_bigquery(entity, plural_entity)
+    for entity, plural_entity in entities.items():
+        task_load_entities_to_bigquery(entity, plural_entity)
 
 
 # register the flow
