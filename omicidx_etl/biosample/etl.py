@@ -36,8 +36,8 @@ def load_bioentities_to_bigquery(entity: str, plural_entity: str):
         write_disposition="WRITE_TRUNCATE",
     )
 
-    uri = f"gs://omicidx-json/biosample/{entity}-*.ndjson.gz"
-    dataset = "biodatalake"
+    uri = f"gs://omicidx/biosample/{entity}-*.ndjson.gz"
+    dataset = "omicidx"
     table = f"src_ncbi__{plural_entity}"
     job = client.load_table_from_uri(
         uri, f"{dataset}.{table}", job_config=load_job_config
