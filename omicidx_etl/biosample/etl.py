@@ -130,8 +130,8 @@ def process_biosamaple_and_bioproject():
     logger.info("BioSample output to gs://omicidx-json/biosample/biosample.ndjson.gz")
     logger.info("Done")
     logger.info("Loading BioProject and BioSample to BigQuery")
-    # load_bioentities_to_bigquery("biosample", "biosamples")
-    # load_bioentities_to_bigquery("bioproject", "bioprojects")
+    load_bioentities_to_bigquery("biosample", "biosamples")
+    load_bioentities_to_bigquery("bioproject", "bioprojects")
 
 
 if __name__ == "__main__":
