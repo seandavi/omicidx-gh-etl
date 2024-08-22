@@ -14,8 +14,8 @@ from ..logging import get_logger
 
 logger = get_logger(__name__)
 
-PROJECT_ID = "omicidx-338300"
-DATASET_ID = "omicidx_etl"
+PROJECT_ID = "gap-som-dbmi-sd-app-fq9"
+DATASET_ID = "omicidx"
 ICITE_COLLECTION_ID = 4586573
 
 
@@ -59,7 +59,7 @@ def expand_tarfile(tarfname: str, dest: str) -> list[str]:
                 logger.info(f"Extracting {fname}")
                 tar.extract(fname, dest)
                 logger.info(f"Uploading {fname} to GCS")
-                up = UPath("gs://omicidx-json/icite")
+                up = UPath("gs://omicidx/icite")
                 localfile = pathlib.Path(f"{dest}/{fname}")
                 upfile = up / str(localfile.with_suffix(".jsonl.gz").name)
                 with open(localfile, "rb") as lf:
@@ -74,7 +74,7 @@ def expand_zipfile(zipfname: str) -> str:
     logger.info(f"Extracting {zipfname}")
     with zipfile.ZipFile(zipfname) as zip:
         with zip.open("open_citation_collection.csv") as f:
-            with UPath("gs://omicidx-json/icite/open_citation_collection.csv").open(
+            with UPath("gs://omicidx/icite/open_citation_collection.csv").open(
                 "wb"
             ) as outfile:
                 shutil.copyfileobj(f, outfile)
@@ -182,7 +182,7 @@ def icite_flow() -> tuple[list[str], str]:
     clean_out_gcs_dir("omicidx-json/opencitation")
     opencitation_file = expand_zipfile(opencitation_zipfile)  # type: ignore
     icite_files = expand_tarfile(icite_tarfile, "icite")  # type: ignore
-    load_to_clickhouse()
+    # load_to_clickhouse()
     return icite_files, opencitation_file
 
 
