@@ -21,7 +21,7 @@ def load_to_bigquery(entity: str):
 
     uri = f"gs://omicidx/geo/{entity}*ndjson.gz"
     dataset = "omicidx"
-    table = f"src_geo__{entity}"
+    table = f"src_geo__{entity}s"
     job = client.load_table_from_uri(
         uri, f"{dataset}.{table}", job_config=load_job_config
     )
