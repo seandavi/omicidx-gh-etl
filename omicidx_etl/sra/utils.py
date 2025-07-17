@@ -1,4 +1,3 @@
-from ..etl import db
 from .. import logging
 from prefect import task
 from google.cloud import bigquery
