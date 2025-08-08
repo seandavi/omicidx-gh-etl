@@ -1,8 +1,21 @@
+"""
+DEPRECATED: This module contains the original Prefect-based ETL code.
+
+For new development, use the simplified extraction functions in extract.py:
+    from omicidx_etl.biosample.extract import extract_all, extract_biosample, extract_bioproject
+
+Or use the CLI:
+    python -m omicidx_etl.cli biosample extract
+
+This file is kept for reference and compatibility during migration.
+"""
+
 from omicidx.biosample import BioSampleParser, BioProjectParser
 import tempfile
 import gzip
 import orjson
 from upath import UPath
+import shutil
 import urllib.request
 from google.cloud import bigquery
 from prefect import task, flow
@@ -46,72 +59,103 @@ def load_bioentities_to_bigquery(entity: str, plural_entity: str):
     return job.result()  # Waits for the job to complete.
 
 
+def cleanup_old_output_files(entity: str):
+    for f in UPath(OUTPUT_DIR).glob(f"{entity}*.gz"):
+        f.unlink()
+
 @task
 def biosample_parse(url: str):
+    """Parse the biosample XML file and write to gzipped ndjson files."""
+    cleanup_old_output_files("biosample")
+    
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
         tmpfile.seek(0)
 
-        # clean up old output files
-        for f in UPath(OUTPUT_DIR).glob("biosample*.gz"):
-            f.unlink()
 
         obj_counter = 0
         file_counter = 0
-        max_lines_per_file = 100000
+        max_lines_per_file = 1000000 # 10x more that bioproject since biosample records are smaller.
 
-        outfile_path = UPath(OUTPUT_DIR) / f"biosample-{file_counter:06}.ndjson.gz"
-        outfile = UPath(outfile_path).open("wb", compression="gzip")
+        # Create local temporary file for writing
+        local_temp = tempfile.NamedTemporaryFile(delete=False)
+        outfile = gzip.open(local_temp.name, "wb")
+
+        def _copy_and_reset():
+            nonlocal outfile, file_counter, obj_counter
+            outfile.close()
+            outfile_path = UPath(OUTPUT_DIR) / f"biosample-{file_counter:06}.ndjson.gz"
+            with open(local_temp.name, "rb") as src:
+                with outfile_path.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+            file_counter += 1
+            obj_counter = 0
+            outfile = gzip.open(local_temp.name, "wb")
 
         with gzip.open(tmpfile.name, "rb") as fh:
             for obj in BioSampleParser(fh, validate_with_schema=False):  # type: ignore
                 if obj_counter >= max_lines_per_file:
-                    outfile.close()
-                    file_counter += 1
-                    outfile_path = (
-                        UPath(OUTPUT_DIR) / f"biosample-{file_counter:06}.ndjson.gz"
-                    )
-                    outfile = UPath(outfile_path).open("wb", compression="gzip")
-                    obj_counter = 0
+                    _copy_and_reset()
 
                 outfile.write(orjson.dumps(obj) + b"\n")
                 obj_counter += 1
 
+        # Copy final file
         outfile.close()
+        outfile_path = UPath(OUTPUT_DIR) / f"biosample-{file_counter:06}.ndjson.gz"
+        with open(local_temp.name, "rb") as src:
+            with outfile_path.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
+        
+        # Clean up local temp file
+        UPath(local_temp.name).unlink()
 
 
 @task
 def bioproject_parse(url: str):
+
+    cleanup_old_output_files("bioproject")
+
     with tempfile.NamedTemporaryFile() as tmpfile:
         urllib.request.urlretrieve(url, tmpfile.name)
         tmpfile.seek(0)
-
-        # clean up old output files
-        for f in UPath(OUTPUT_DIR).glob("bioproject*.gz"):
-            f.unlink()
 
         obj_counter = 0
         file_counter = 0
         max_lines_per_file = 100000
 
-        outfile_path = UPath(OUTPUT_DIR) / f"bioproject-{file_counter:06}.ndjson.gz"
-        outfile = UPath(outfile_path).open("wb", compression="gzip")
+        # Create local temporary file for writing
+        local_temp = tempfile.NamedTemporaryFile(delete=False)
+        outfile = gzip.open(local_temp.name, "wb")
+
+        def _copy_and_reset():
+            nonlocal outfile, file_counter, obj_counter
+            outfile.close()
+            outfile_path = UPath(OUTPUT_DIR) / f"bioproject-{file_counter:06}.ndjson.gz"
+            with open(local_temp.name, "rb") as src:
+                with outfile_path.open("wb") as dst:
+                    shutil.copyfileobj(src, dst)
+            file_counter += 1
+            obj_counter = 0
+            outfile = gzip.open(local_temp.name, "wb")
 
         with open(tmpfile.name, "rb") as fh:
             for obj in BioProjectParser(fh, validate_with_schema=False):  # type: ignore
                 if obj_counter >= max_lines_per_file:
-                    outfile.close()
-                    file_counter += 1
-                    outfile_path = (
-                        UPath(OUTPUT_DIR) / f"bioproject-{file_counter:06}.ndjson.gz"
-                    )
-                    outfile = UPath(outfile_path).open("wb", compression="gzip")
-                    obj_counter = 0
+                    _copy_and_reset()
 
                 outfile.write(orjson.dumps(obj) + b"\n")
                 obj_counter += 1
 
+        # Copy final file
         outfile.close()
+        outfile_path = UPath(OUTPUT_DIR) / f"bioproject-{file_counter:06}.ndjson.gz"
+        with open(local_temp.name, "rb") as src:
+            with outfile_path.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
+                
+        # Clean up local temp file
+        UPath(local_temp.name).unlink()
 
 
 @flow
@@ -130,8 +174,8 @@ def process_biosamaple_and_bioproject():
     logger.info("BioSample output to gs://omicidx-json/biosample/biosample.ndjson.gz")
     logger.info("Done")
     logger.info("Loading BioProject and BioSample to BigQuery")
-    load_bioentities_to_bigquery("biosample", "biosamples")
-    load_bioentities_to_bigquery("bioproject", "bioprojects")
+    #load_bioentities_to_bigquery("biosample", "biosamples")
+    #load_bioentities_to_bigquery("bioproject", "bioprojects")
 
 
 if __name__ == "__main__":
