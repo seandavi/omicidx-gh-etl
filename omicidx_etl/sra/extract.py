@@ -11,6 +11,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from omicidx.sra.parser import sra_object_generator
 from upath import UPath
+from ..db import duckdb_connection
 
 logger = logging.getLogger(__name__)
 
@@ -148,10 +149,48 @@ def _write_parquet_file(xml_file_path: str, output_path: Path) -> int:
     return record_count
 
 
+def extract_sra_accessions(output_dir: Path) -> bool:
+    """Extract SRA accessions TSV to Parquet using DuckDB."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / "sra_accessions.parquet"
+    
+    logger.info("Converting SRA accessions TSV to Parquet")
+    
+    try:
+        with duckdb_connection() as con:
+            sql = f"""
+            copy 
+                (
+                    select 
+                        * 
+                    from 
+                        read_csv_auto(
+                            'https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab', 
+                            delim='\t',
+                            nullstr='-'
+                        )) 
+                to 
+                    '{output_path}' 
+                    (
+                        format parquet, 
+                        compression zstd
+                    )
+            """
+            con.execute(sql)
+        
+        logger.info(f"Created SRA accessions file: {output_path}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to extract SRA accessions: {e}")
+        return False
+
+
 def extract_sra(
     output_dir: Path, 
     max_workers: int = 4,
-    output_format: str = OUTPUT_FORMAT_PARQUET
+    output_format: str = OUTPUT_FORMAT_PARQUET,
+    include_accessions: bool = True
 ) -> dict[str, int]:
     """Extract all SRA data files."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -159,6 +198,11 @@ def extract_sra(
     # Clean up old files
     pattern = "*.parquet" if output_format == OUTPUT_FORMAT_PARQUET else "*.ndjson.gz"
     cleanup_old_files(output_dir, pattern)
+    
+    # Extract SRA accessions first if requested
+    if include_accessions:
+        logger.info("Extracting SRA accessions...")
+        extract_sra_accessions(output_dir)
     
     # Get all URLs
     urls = get_sra_urls()
@@ -271,10 +315,11 @@ def extract_and_upload(
     output_dir: Path, 
     upload: bool = True,
     max_workers: int = 4,
-    output_format: str = OUTPUT_FORMAT_PARQUET
+    output_format: str = OUTPUT_FORMAT_PARQUET,
+    include_accessions: bool = True
 ) -> dict[str, int]:
     """Extract all SRA files and optionally upload to R2."""
-    results = extract_sra(output_dir, max_workers, output_format)
+    results = extract_sra(output_dir, max_workers, output_format, include_accessions)
     
     if upload and results:
         # Get list of generated files

@@ -7,6 +7,7 @@ from pathlib import Path
 from .extract import (
     extract_sra, 
     extract_and_upload, 
+    extract_sra_accessions,
     get_file_stats, 
     upload_to_r2,
     OUTPUT_FORMAT_PARQUET,
@@ -31,21 +32,48 @@ def sra():
               help='Output format (default: parquet)')
 @click.option('--workers', default=4, help='Number of parallel workers (default: 4)')
 @click.option('--upload/--no-upload', default=False, help='Upload to R2 after extraction')
-def extract(output_dir: Path, output_format: str, workers: int, upload: bool):
+@click.option('--include-accessions/--no-accessions', default=True, 
+              help='Include SRA accessions extraction (default: yes)')
+def extract(output_dir: Path, output_format: str, workers: int, upload: bool, include_accessions: bool):
     """Extract SRA data to local files."""
     logger.info(f"Starting SRA extraction to {output_dir}")
-    logger.info(f"Format: {output_format}, Workers: {workers}, Upload: {upload}")
+    logger.info(f"Format: {output_format}, Workers: {workers}, Upload: {upload}, Accessions: {include_accessions}")
     
     if upload:
-        results = extract_and_upload(output_dir, upload=True, max_workers=workers, output_format=output_format)
+        results = extract_and_upload(
+            output_dir, upload=True, max_workers=workers, 
+            output_format=output_format, include_accessions=include_accessions
+        )
     else:
-        results = extract_sra(output_dir, max_workers=workers, output_format=output_format)
+        results = extract_sra(
+            output_dir, max_workers=workers, 
+            output_format=output_format, include_accessions=include_accessions
+        )
     
     if results:
         total_records = sum(results.values())
         logger.info(f"Extraction completed: {len(results)} files, {total_records} total records")
     else:
         logger.warning("No files were extracted")
+
+
+@sra.command()
+@click.argument('output_dir', type=click.Path(path_type=Path))
+def accessions(output_dir: Path):
+    """Extract SRA accessions file only."""
+    logger.info(f"Extracting SRA accessions to {output_dir}")
+    
+    success = extract_sra_accessions(output_dir)
+    
+    if success:
+        accessions_file = output_dir / "sra_accessions.parquet"
+        if accessions_file.exists():
+            size_mb = accessions_file.stat().st_size / (1024 * 1024)
+            logger.info(f"SRA accessions extracted successfully: {size_mb:.2f} MB")
+        else:
+            logger.warning("Accessions file not found after extraction")
+    else:
+        logger.error("Failed to extract SRA accessions")
 
 
 @sra.command()
