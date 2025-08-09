@@ -149,27 +149,59 @@ def get_file_stats(output_dir: Path) -> dict:
 
 # R2 upload functionality (optional)
 def upload_to_r2(local_files: list[Path], entity: str, bucket: str = "biodatalake"):
-    """Upload files to R2 storage."""
-    import os
-    import boto3
-    
-    # Check for R2 credentials
-    if not all(key in os.environ for key in ['R2_ACCESS_KEY', 'R2_SECRET_KEY', 'R2_ENDPOINT']):
-        logger.warning("R2 credentials not found, skipping upload")
+    """Upload files to R2 storage using UPath with s3fs backend."""
+    try:
+        from upath import UPath
+        import s3fs
+        import os
+    except ImportError as e:
+        logger.error(f"Required packages not available: {e}")
+        logger.error("Install with: pip install universal-pathlib[s3] s3fs")
         return
     
-    r2_client = boto3.client(
-        's3',
-        endpoint_url=os.environ['R2_ENDPOINT'],
-        aws_access_key_id=os.environ['R2_ACCESS_KEY'],
-        aws_secret_access_key=os.environ['R2_SECRET_KEY'],
-    )
+    # Check for R2 credentials
+    required_vars = ['R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_ENDPOINT_URL']
+    if not all(var in os.environ for var in required_vars):
+        logger.warning(f"R2 credentials not found. Required: {required_vars}")
+        return
     
-    for local_file in local_files:
-        r2_key = f"biosample/{entity}/{local_file.name}"
+    try:
+        # Configure s3fs for R2
+        fs = s3fs.S3FileSystem(
+            key=os.environ['R2_ACCESS_KEY_ID'],
+            secret=os.environ['R2_SECRET_ACCESS_KEY'],
+            endpoint_url=os.environ['R2_ENDPOINT_URL'],
+            use_ssl=True
+        )
         
-        logger.info(f"Uploading {local_file} to R2: {r2_key}")
-        r2_client.upload_file(str(local_file), bucket, r2_key)
+        # R2 directory path using UPath with configured filesystem
+        r2_base = UPath(f"s3://{bucket}/biosample")
+        
+        # Clean up existing files in R2 directory
+        if r2_base.exists():
+            logger.info(f"Cleaning up R2 directory: {r2_base}")
+            existing_files = list(r2_base.glob(f"{entity}-*"))
+            
+            if existing_files:
+                logger.info(f"Deleting {len(existing_files)} existing files from {r2_base}")
+                for file_path in existing_files:
+                    file_path.unlink()
+            else:
+                logger.info(f"No existing files found in {r2_base}")
+        else:
+            logger.info(f"R2 directory {r2_base} does not exist, creating new")
+            r2_base.mkdir(parents=True, exist_ok=True)
+        
+        # Upload new files
+        for local_file in local_files:
+            r2_file = r2_base / local_file.name
+            
+            logger.info(f"Uploading {local_file} to R2: {r2_file}")
+            r2_file.write_bytes(local_file.read_bytes())
+            
+    except Exception as e:
+        logger.error(f"Failed to upload to R2: {e}")
+        logger.info("Verify R2 credentials and endpoint configuration")
 
 
 def extract_and_upload(output_dir: Path, upload: bool = True):
