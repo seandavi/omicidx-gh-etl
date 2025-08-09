@@ -13,11 +13,13 @@ LOG_FILE="/var/log/omicidx/sra-extract-$(date +%Y%m%d).log"
 MAX_WORKERS=8  # Conservative for SRA's large files
 OUTPUT_FORMAT="parquet"  # Default to Parquet for DuckDB
 UPLOAD_TO_R2=true
+INCLUDE_ACCESSIONS=true  # Include SRA accessions extraction
 
 echo "SRA ETL Starting at $(date)" | tee -a "$LOG_FILE"
 echo "Output Directory: $OUTPUT_DIR" | tee -a "$LOG_FILE"
 echo "Workers: $MAX_WORKERS" | tee -a "$LOG_FILE"
 echo "Format: $OUTPUT_FORMAT" | tee -a "$LOG_FILE"
+echo "Include Accessions: $INCLUDE_ACCESSIONS" | tee -a "$LOG_FILE"
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
@@ -27,18 +29,27 @@ mkdir -p "$(dirname "$LOG_FILE")"
 cd "$PROJECT_ROOT"
 
 # Activate environment and run extraction
+ACCESSIONS_FLAG=""
+if [ "$INCLUDE_ACCESSIONS" = true ]; then
+    ACCESSIONS_FLAG="--include-accessions"
+else
+    ACCESSIONS_FLAG="--no-accessions"
+fi
+
 if [ "$UPLOAD_TO_R2" = true ]; then
     echo "Running SRA extraction with R2 upload..." | tee -a "$LOG_FILE"
     uv run omicidx-etl sra extract "$OUTPUT_DIR" \
         --format "$OUTPUT_FORMAT" \
         --workers "$MAX_WORKERS" \
-        --upload 2>&1 | tee -a "$LOG_FILE"
+        --upload \
+        $ACCESSIONS_FLAG 2>&1 | tee -a "$LOG_FILE"
 else
     echo "Running SRA extraction (local only)..." | tee -a "$LOG_FILE"
     uv run omicidx-etl sra extract "$OUTPUT_DIR" \
         --format "$OUTPUT_FORMAT" \
         --workers "$MAX_WORKERS" \
-        --no-upload 2>&1 | tee -a "$LOG_FILE"
+        --no-upload \
+        $ACCESSIONS_FLAG 2>&1 | tee -a "$LOG_FILE"
 fi
 
 # Show statistics
