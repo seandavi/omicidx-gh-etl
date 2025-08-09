@@ -16,6 +16,12 @@ omicidx-etl sra extract /path/to/output --format ndjson --workers 8
 # Extract and upload to R2 in one step
 omicidx-etl sra extract /path/to/output --upload
 
+# Extract without SRA accessions file
+omicidx-etl sra extract /path/to/output --no-accessions
+
+# Extract only the SRA accessions file
+omicidx-etl sra accessions /path/to/output
+
 # Show statistics about extracted files
 omicidx-etl sra stats /path/to/output
 
@@ -37,8 +43,13 @@ output_dir = Path("./sra_data")
 results = extract_sra(
     output_dir=output_dir,
     max_workers=4,
-    output_format="parquet"  # or "ndjson"
+    output_format="parquet",  # or "ndjson"
+    include_accessions=True   # default: True
 )
+
+# Extract only accessions
+from omicidx_etl.sra.extract import extract_sra_accessions
+success = extract_sra_accessions(output_dir)
 
 # Get statistics
 stats = get_file_stats(output_dir)
@@ -55,6 +66,7 @@ print(f"Extracted {stats['sra']['file_count']} files")
 - **Parallel Processing**: Configurable worker threads for faster extraction
 - **Memory Efficient**: Uses temporary files and streaming processing
 - **URL Discovery**: Automatically finds current and incremental SRA mirror files
+- **SRA Accessions**: Included by default, uses DuckDB for efficient TSV→Parquet conversion
 
 ### R2 Storage Integration
 - **Clean Upload**: Removes old files before uploading new ones
@@ -115,7 +127,8 @@ output_dir/
 ├── 20250101_run_set.parquet
 ├── 20250101_sample_set.parquet
 ├── 20250101_study_set.parquet
-└── 20250102_experiment_set.parquet
+├── 20250102_experiment_set.parquet
+├── sra_accessions.parquet
     ...
 ```
 
