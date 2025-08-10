@@ -18,19 +18,25 @@ dependencies = [
     "clickhouse-connect >=0.7.12,<0.8.0",
     "google-cloud-bigquery >=3.24.0,<4.0.0",
     "pandas >=2.2.2,<3.0.0",
-    "prefect>=3.4.2",
+    "prefect[aws]>=3.4.2",
     "httpx>=0.28.1",
     "trio>=0.30.0",
     "python-dotenv[cli]>=1.1.0",
     "omicidx>=1.15.0",
     "duckdb>=1.3.0",
     "ibis-framework[bigquery,duckdb]>=10.5.0",
+    "prefect-aws>=0.5.10",
+    "pyarrow>=20.0.0",
+    "dbos>=1.10.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ipykernel >=6.29.4,<7.0.0",
 ]
+
+[project.scripts]
+pubmed = "omicidx_etl.etl.cli_pubmed:pubmed"
 
 [build-system]
 requires = ["poetry-core>=1.5.0"] # Ensures poetry-core reads from [project]
