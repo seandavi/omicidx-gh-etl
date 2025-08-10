@@ -3,14 +3,11 @@ import datetime
 import pubmed_parser as pp
 from urllib.request import urlretrieve
 import tempfile
-from prefect import task, flow
-from .pubmed_load import load_to_bigquery
 import shutil
 import gzip
 from upath import UPath
 import pyarrow as pa
 import pyarrow.parquet as pq
-import dbos
 
 from ..logging import get_logger
 
@@ -93,12 +90,12 @@ def pubmed_url_to_parquet_file(url: UPath) -> None:
     xml to json. The json objects are serialized to bytes using orjson.
     """
     with (
-        tempfile.NamedTemporaryFile(suffix=".xml.gz") as f,
+        tempfile.NamedTemporaryFile(suffix=".xml.gz") as temp_xml_file,
         tempfile.NamedTemporaryFile(suffix=".parquet") as local_parquet_file
     ):
-        localfname = f.name
+        localfname = temp_xml_file.name
         urlretrieve(str(url), filename=localfname)
-        generator = pp.parse_medline_xml(
+        pubmed_article_generator = pp.parse_medline_xml(
             localfname,
             year_info_only=False,
             nlm_category=True,
@@ -109,11 +106,10 @@ def pubmed_url_to_parquet_file(url: UPath) -> None:
         #with self.json_file_for_url(url).open("wb", compression="gzip") as outfile:
         
         objects = []
-        with gzip.open('pubmed.jsonl.gz', 'wb') as outfile:
-            for obj in generator:
-                obj["_inserted_at"] = datetime.datetime.now()
-                obj["_read_from"] = str(url)
-                objects.append(obj)
+        for obj in pubmed_article_generator:
+            obj["_inserted_at"] = datetime.datetime.now()
+            obj["_read_from"] = str(url)
+            objects.append(obj)
         pubmed_table = pa.Table.from_pylist(objects)
         # write the table to parquet locally first
         # then upload it to the final destination
