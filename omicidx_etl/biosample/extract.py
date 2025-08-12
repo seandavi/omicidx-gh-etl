@@ -117,7 +117,7 @@ def _extract_entity(
         if current_batch:
             _write_batch()
     
-    logger.info(f"Completed {entity} extraction: {len(output_files)} files")
+    logger.info(f"Completed {entity} extraction: {obj_counter} records, {len(output_files)} files")
     return output_files
 
 
