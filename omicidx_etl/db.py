@@ -1,18 +1,11 @@
 import clickhouse_connect as ch
-from .etl.config import settings
+from .config import settings
 import duckdb
 import contextlib
 
-def get_client():
-    return ch.get_client(
-        host=settings.CLICKHOUSE_HOST,
-        username=settings.CLICKHOUSE_USERNAME,
-        password=settings.CLICKHOUSE_PASSWORD,
-        database=settings.CLICKHOUSE_DATABASE,
-    )
-    
+
 def duckdb_setup_sql():
-    return """
+    return f"""
     INSTALL httpfs;
     LOAD httpfs;
     SET memory_limit='16GB';
@@ -21,10 +14,16 @@ def duckdb_setup_sql():
     SET max_temp_directory_size='100GB';
     CREATE SECRET (
         TYPE r2,
-        KEY_ID '{{settings.R2_ACCESS_KEY_ID}}',
-        SECRET '{{settings.R2_SECRET_ACCESS_KEY}}',
-        ACCOUNT_ID '{{settings.R2_ACCOUNT_ID}}'
+        KEY_ID '{settings.R2_ACCESS_KEY_ID}',
+        SECRET '{settings.R2_SECRET_ACCESS_KEY}',
+        ACCOUNT_ID '{settings.R2_ACCOUNT_ID}'
     );
+    CREATE SECRET osn (
+        TYPE s3,
+        KEY_ID '{settings.AWS_ACCESS_KEY_ID}',
+        SECRET '{settings.AWS_SECRET_ACCESS_KEY}',
+        ENDPOINT '{settings.AWS_ENDPOINT_URL or "https://s3.amazonaws.com"}'
+    )
     """
 
 @contextlib.contextmanager
