@@ -1,29 +1,52 @@
 """
 Simplified biosample/bioproject extraction without Prefect dependencies.
 """
-
+import httpx
+from tqdm import tqdm
 import tempfile
 import gzip
-import orjson
 from pathlib import Path
 import urllib.request
 import logging
 from omicidx.biosample import BioSampleParser, BioProjectParser
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 logger = logging.getLogger(__name__)
 
 # Configuration
 BIO_SAMPLE_URL = "https://ftp.ncbi.nlm.nih.gov/biosample/biosample_set.xml.gz"
 BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
+OUTPUT_SUFFIX = ".ndjson.gz"
 
 # Batch sizes optimized for your 512GB RAM
 BIOSAMPLE_BATCH_SIZE = 2_000_000  # Much larger than current 1M
 BIOPROJECT_BATCH_SIZE = 500_000   # Much larger than current 100k
 
+def url_download(url: str, download_filename: str):
+    """Download a file from a URL to a local destination."""
+
+    with open(download_filename, "wb") as download_file:
+        with httpx.stream("GET", url) as response:
+            if response.status_code != 200:
+                raise Exception(f"Failed to download {url}: {response.status_code}")
+            if "Content-Length" in response.headers:
+                total = int(response.headers["Content-Length"])
+
+                with tqdm(total=total, unit_scale=True, unit_divisor=1024, unit="B") as progress:
+                    num_bytes_downloaded = response.num_bytes_downloaded
+                    for chunk in response.iter_bytes():
+                        download_file.write(chunk)
+                        progress.update(response.num_bytes_downloaded - num_bytes_downloaded)
+                        num_bytes_downloaded = response.num_bytes_downloaded
+            else:
+                for chunk in response.iter_bytes():
+                    download_file.write(chunk)
+
 
 def cleanup_old_files(output_dir: Path, entity: str):
     """Remove old output files for an entity."""
-    for file_path in output_dir.glob(f"{entity}*.ndjson.gz"):
+    for file_path in output_dir.glob(f"{entity}*{OUTPUT_SUFFIX}"):
         file_path.unlink()
         logger.info(f"Removed old file: {file_path}")
 
@@ -51,7 +74,6 @@ def extract_bioproject(output_dir: Path) -> list[Path]:
         use_gzip_input=False
     )
 
-
 def _extract_entity(
     url: str, 
     entity: str, 
@@ -60,7 +82,7 @@ def _extract_entity(
     parser_class,
     use_gzip_input: bool
 ) -> list[Path]:
-    """Extract a single entity type."""
+    """Extract a single entity type to parquet files."""
     output_dir.mkdir(parents=True, exist_ok=True)
     cleanup_old_files(output_dir, entity)
     
@@ -68,45 +90,40 @@ def _extract_entity(
     
     output_files = []
     
-    with tempfile.NamedTemporaryFile() as tmpfile:
-        urllib.request.urlretrieve(url, tmpfile.name)
-        
+    with tempfile.NamedTemporaryFile() as downloaded_file:
+        url_download(url, downloaded_file.name)
+
         obj_counter = 0
         file_counter = 0
-        current_output = None
+        current_batch = []
         
-        def _finalize_current_file():
-            nonlocal current_output, file_counter, obj_counter, output_files
-            if current_output:
-                current_output.close()
+        def _write_batch():
+            nonlocal current_batch, file_counter, output_files
+            if current_batch:
+                output_path = output_dir / f"{entity}-{file_counter:06}{OUTPUT_SUFFIX}"
+                table = pa.Table.from_pylist(current_batch)
+                pq.write_table(table, output_path)
+                output_files.append(output_path)
+                logger.info(f"Wrote {len(current_batch)} records to {output_path}")
+                current_batch = []
                 file_counter += 1
-                obj_counter = 0
         
         # Open input file
         open_func = gzip.open if use_gzip_input else open
         mode = "rb"
         
-        with open_func(tmpfile.name, mode) as input_file:
+        with open_func(downloaded_file.name, mode) as input_file:
             for obj in parser_class(input_file, validate_with_schema=False):
+                current_batch.append(obj)
+                obj_counter += 1
                 
-                # Start new output file if needed
-                if obj_counter % batch_size == 0:
-                    if current_output:
-                        _finalize_current_file()
-                    
-                    output_path = output_dir / f"{entity}-{file_counter:06}.ndjson.gz"
-                    current_output = gzip.open(output_path, "wb")
-                    output_files.append(output_path)
-                    logger.info(f"Writing to {output_path}")
-                
-                # Write object (current_output is guaranteed to exist here)
-                if current_output:
-                    current_output.write(orjson.dumps(obj) + b"\n")
-                    obj_counter += 1
+                # Write batch when it reaches batch_size
+                if len(current_batch) >= batch_size:
+                    _write_batch()
         
-        # Finalize last file
-        if current_output:
-            _finalize_current_file()
+        # Write final batch if it has data
+        if current_batch:
+            _write_batch()
     
     logger.info(f"Completed {entity} extraction: {len(output_files)} files")
     return output_files
@@ -135,7 +152,7 @@ def get_file_stats(output_dir: Path) -> dict:
     stats = {}
     
     for entity in ["biosample", "bioproject"]:
-        files = sorted(output_dir.glob(f"{entity}-*.ndjson.gz"))
+        files = sorted(output_dir.glob(f"{entity}-*{OUTPUT_SUFFIX}"))
         total_size = sum(f.stat().st_size for f in files)
         
         stats[entity] = {
