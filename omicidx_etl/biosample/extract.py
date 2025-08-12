@@ -2,11 +2,9 @@
 Simplified biosample/bioproject extraction without Prefect dependencies.
 """
 import httpx
-from tqdm import tqdm
 import tempfile
 import gzip
 from pathlib import Path
-import urllib.request
 import logging
 from omicidx.biosample import BioSampleParser, BioProjectParser
 import pyarrow as pa
@@ -17,7 +15,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 BIO_SAMPLE_URL = "https://ftp.ncbi.nlm.nih.gov/biosample/biosample_set.xml.gz"
 BIO_PROJECT_URL = "https://ftp.ncbi.nlm.nih.gov/bioproject/bioproject.xml"
-OUTPUT_SUFFIX = ".ndjson.gz"
+OUTPUT_SUFFIX = ".parquet"
 
 # Batch sizes optimized for your 512GB RAM
 BIOSAMPLE_BATCH_SIZE = 2_000_000  # Much larger than current 1M
@@ -26,23 +24,17 @@ BIOPROJECT_BATCH_SIZE = 500_000   # Much larger than current 100k
 def url_download(url: str, download_filename: str):
     """Download a file from a URL to a local destination."""
 
-    with open(download_filename, "wb") as download_file:
-        with httpx.stream("GET", url) as response:
-            if response.status_code != 200:
-                raise Exception(f"Failed to download {url}: {response.status_code}")
-            if "Content-Length" in response.headers:
-                total = int(response.headers["Content-Length"])
+    try:
+        with open(download_filename, "wb") as download_file:
+            with httpx.stream("GET", url) as response:
+                response.raise_for_status()
 
-                with tqdm(total=total, unit_scale=True, unit_divisor=1024, unit="B") as progress:
-                    num_bytes_downloaded = response.num_bytes_downloaded
-                    for chunk in response.iter_bytes():
-                        download_file.write(chunk)
-                        progress.update(response.num_bytes_downloaded - num_bytes_downloaded)
-                        num_bytes_downloaded = response.num_bytes_downloaded
-            else:
                 for chunk in response.iter_bytes():
                     download_file.write(chunk)
-
+                    
+    except Exception as e:
+        logger.error(f"Error downloading {url}: {e}")
+        raise
 
 def cleanup_old_files(output_dir: Path, entity: str):
     """Remove old output files for an entity."""
@@ -94,7 +86,7 @@ def _extract_entity(
         url_download(url, downloaded_file.name)
 
         obj_counter = 0
-        file_counter = 0
+        file_counter = 1
         current_batch = []
         
         def _write_batch():
