@@ -28,6 +28,8 @@ dependencies = [
     "prefect-aws>=0.5.10",
     "pyarrow>=20.0.0",
     "dbos>=1.10.0",
+    "loguru>=0.7.3",
+    "tqdm>=4.67.1",
 ]
 
 [project.optional-dependencies]
