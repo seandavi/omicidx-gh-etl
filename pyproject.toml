@@ -30,6 +30,7 @@ dependencies = [
     "dbos>=1.10.0",
     "loguru>=0.7.3",
     "tqdm>=4.67.1",
+    "polars>=1.32.2",
 ]
 
 [project.optional-dependencies]
