@@ -113,6 +113,7 @@ def pubmed_url_to_parquet_file(url: UPath, output_path: UPath) -> None:
 def etl_pubmeds(output_path: UPath, replace: bool = False):
     needed_urls = get_needed_urls(output_path, replace=replace)
     logger.info(f"Processing {len(needed_urls)} urls")
+    output_path.mkdir(parents=True, exist_ok=True)
     for index, url in enumerate(needed_urls):
         logger.info("Processing url: " + str(url))
         logger.info(f"Processing {index + 1} of {len(needed_urls)}")
@@ -124,7 +125,7 @@ def pubmed():
 
 
 @pubmed.command()
-@click.argument("output_dir", type=click.Path(exists=True))
+@click.argument("output_dir", type=UPath)
 def extract(output_dir: str):
     """Command-line interface for extraction and optional upload."""
     output_path = UPath(output_dir)
