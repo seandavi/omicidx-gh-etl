@@ -20,27 +20,33 @@ import tenacity
 from loguru import logger
 
 
-from .load import load_to_bigquery
 import tempfile
 import shutil
 
 logging.basicConfig(level=logging.INFO)
-logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
-OUTPUT_PATH = UPath('/Users/davsean/data/omicidx') / "geo"
+OUTPUT_PATH = UPath("/Users/davsean/data/omicidx") / "geo"
 OUTPUT_DIR = str(OUTPUT_PATH)
 
 faulthandler.enable()
 
 
 @retry(
-    wait=tenacity.wait_fixed(2), 
+    wait=tenacity.wait_fixed(2),
     stop=tenacity.stop_after_attempt(5),
-    retry=tenacity.retry_if_exception(lambda e: (
-        (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429) or
-        isinstance(e, (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException))
-    )),
-    before_sleep=lambda retry_state: logger.warning(f"GEO SOFT request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)")
+    retry=tenacity.retry_if_exception(
+        lambda e: (
+            (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429)
+            or isinstance(
+                e,
+                (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+            )
+        )
+    ),
+    before_sleep=lambda retry_state: logger.warning(
+        f"GEO SOFT request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)"
+    ),
 )
 async def get_geo_soft(accession, client) -> str:
     """Fetches the GEO SOFT file for the given accession."""
@@ -99,16 +105,14 @@ async def write_geo_entity_worker(
     }
 
     with (
-        tempfile.NamedTemporaryFile() as gse_temp, \
-        tempfile.NamedTemporaryFile() as gsm_temp, \
-        tempfile.NamedTemporaryFile() as gpl_temp
+        tempfile.NamedTemporaryFile() as gse_temp,
+        tempfile.NamedTemporaryFile() as gsm_temp,
+        tempfile.NamedTemporaryFile() as gpl_temp,
     ):
-
-        
         gse_written = False
         gsm_written = False
         gpl_written = False
-        
+
         gse_tmp_write = gzip.open(gse_temp.name, "wb")
         gsm_tmp_write = gzip.open(gsm_temp.name, "wb")
         gpl_tmp_write = gzip.open(gpl_temp.name, "wb")
@@ -120,13 +124,19 @@ async def write_geo_entity_worker(
                 if entity is None:
                     continue
                 if entity.accession.startswith("GSE"):  # type: ignore
-                    gse_tmp_write.write(entity.model_dump_json().encode("utf-8") + b"\n")  # type: ignore
+                    gse_tmp_write.write(
+                        entity.model_dump_json().encode("utf-8") + b"\n"
+                    )  # type: ignore
                     gse_written = True
                 elif entity.accession.startswith("GSM"):  # type: ignore
-                    gsm_tmp_write.write(entity.model_dump_json().encode("utf-8") + b"\n")  # type: ignore
+                    gsm_tmp_write.write(
+                        entity.model_dump_json().encode("utf-8") + b"\n"
+                    )  # type: ignore
                     gsm_written = True
                 elif entity.accession.startswith("GPL"):  # type: ignore
-                    gpl_tmp_write.write(entity.model_dump_json().encode("utf-8") + b"\n")  # type: ignore
+                    gpl_tmp_write.write(
+                        entity.model_dump_json().encode("utf-8") + b"\n"
+                    )  # type: ignore
                     gpl_written = True
                 record_counts[entity.accession[:3]] += 1  # type: ignore
 
@@ -136,17 +146,17 @@ async def write_geo_entity_worker(
 
         # Copy temporary files to final destinations
         if gse_written:
-            with open(gse_temp.name, 'rb') as src:
+            with open(gse_temp.name, "rb") as src:
                 with gse_path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
-        
+
         if gsm_written:
-            with open(gsm_temp.name, 'rb') as src:
+            with open(gsm_temp.name, "rb") as src:
                 with gsm_path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
 
         if gpl_written:
-            with open(gpl_temp.name, 'rb') as src:
+            with open(gpl_temp.name, "rb") as src:
                 with gpl_path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
 
@@ -165,13 +175,20 @@ def entrezid_to_geo(entrezid: str):
 
 
 @retry(
-    wait=tenacity.wait_fixed(2), 
+    wait=tenacity.wait_fixed(2),
     stop=tenacity.stop_after_attempt(5),
-    retry=tenacity.retry_if_exception(lambda e: (
-        (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429) or
-        isinstance(e, (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException))
-    )),
-    before_sleep=lambda retry_state: logger.warning(f"Entrez API request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)")
+    retry=tenacity.retry_if_exception(
+        lambda e: (
+            (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429)
+            or isinstance(
+                e,
+                (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+            )
+        )
+    ),
+    before_sleep=lambda retry_state: logger.warning(
+        f"Entrez API request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)"
+    ),
 )
 async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, end_date):
     offset = 0
@@ -184,7 +201,7 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
                     "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
                     params={
                         "db": "gds",
-                        "term": f"""(GSM[etyp] OR GSE[etyp] OR GPL[etyp]) AND ("{start_date.strftime('%Y/%m/%d')}"[Update Date] : "{end_date.strftime('%Y/%m/%d')}"[Update Date])""",
+                        "term": f"""(GSM[etyp] OR GSE[etyp] OR GPL[etyp]) AND ("{start_date.strftime("%Y/%m/%d")}"[Update Date] : "{end_date.strftime("%Y/%m/%d")}"[Update Date])""",
                         "retmode": "json",
                         "retmax": RETMAX,
                         "retstart": offset,
@@ -262,7 +279,7 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
         # Calculate the end of the current month
         current_end = (current_start + relativedelta(months=1)) - timedelta(days=1)
         # Adjust the end date if it's beyond the given end_date
-        #if current_end > end_date:
+        # if current_end > end_date:
         #    current_end = end_date
         monthly_ranges.append((current_start.date(), current_end.date()))
         # Move to the first day of the next month
@@ -288,6 +305,7 @@ async def main():
 def geo():
     """OmicIDX ETL Pipeline - GEO data extraction tools."""
     pass
+
 
 @geo.command()
 def extract():
