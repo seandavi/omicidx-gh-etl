@@ -143,7 +143,7 @@ def extract_all(output_dir: Path) -> dict[str, list[Path]]:
 def biosample():
     pass
 
-@click.command()
+@biosample.command()
 @click.argument("output_dir", type=click.Path(exists=True))
 def extract(output_dir: str):
     """Command-line interface for extraction and optional upload."""
