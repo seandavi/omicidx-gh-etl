@@ -4,19 +4,15 @@ import pubmed_parser as pp
 from urllib.request import urlretrieve
 import tempfile
 import shutil
-import gzip
 from upath import UPath
 import pyarrow as pa
 import pyarrow.parquet as pq
-
-from ..logging import get_logger
+from loguru import logger
 
 # Module-level constants
 PUBMED_BASE = UPath("https://ftp.ncbi.nlm.nih.gov/pubmed")
 OUTPUT_UPATH = UPath("s3://biodatalake/pubmed")
 OUTPUT_EXTENSION = ".parquet"
-
-logger = get_logger(__name__)
 
 
 def _url_to_pubmed_id(url: UPath) -> str:
