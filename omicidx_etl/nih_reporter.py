@@ -9,13 +9,15 @@ import gzip
 from typing import Optional
 from datetime import datetime
 from loguru import logger
+import click
+from upath import UPath
 
 # Use basic logging for now
 logging.basicConfig(level=logging.INFO)
 logging.getLogger('httpx').setLevel(logging.WARNING)
 
 # Configuration constants
-DEFAULT_OUTPUT_DIR = pathlib.Path("/tmp/omicidx/nih_reporter")
+DEFAULT_OUTPUT_DIR = UPath("/tmp/omicidx/nih_reporter")
 DEFAULT_TIMEOUT = 300  # 5 minutes
 CHUNK_SIZE = 8192
 TEMP_FILE_NAME = "nih_reporter_download.tmp"
@@ -308,5 +310,13 @@ def process_all_entities(output_dir: pathlib.Path = DEFAULT_OUTPUT_DIR):
     logger.info("Completed NIH Reporter data processing")
 
 
-if __name__ == "__main__":
-    process_all_entities()
+@click.group()
+def nih_reporter():
+    """NIH Reporter ETL commands."""
+    pass
+
+@nih_reporter.command()
+@click.argument('output_dir', type=click.Path(path_type=UPath))
+def extract(output_dir: UPath):
+    """Extract data from NIH Reporter."""
+    process_all_entities(output_dir)
