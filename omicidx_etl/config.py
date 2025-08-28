@@ -2,6 +2,10 @@
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Optional
+from dotenv import load_dotenv
+from upath import UPath
+
+load_dotenv()  # Load environment variables from .env file
 
 class Settings(BaseSettings):
     """settings for omicidx_etl"""
@@ -21,6 +25,9 @@ class Settings(BaseSettings):
     R2_SECRET_ACCESS_KEY: str
     R2_ACCOUNT_ID: str
 
+    @property
+    def publish_directory(self) -> UPath:
+        return UPath(self.PUBLISH_DIRECTORY)
 
 settings = Settings()  # type: ignore
 
