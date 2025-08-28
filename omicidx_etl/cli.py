@@ -7,6 +7,7 @@ from omicidx_etl.biosample.extract import biosample
 from omicidx_etl.ebi_biosample.extract import ebi_biosample
 from omicidx_etl.sra.cli import sra
 from omicidx_etl.geo.extract import geo
+from omicidx_etl.etl.icite import icite
 
 
 @click.group()
@@ -21,7 +22,7 @@ cli.add_command(biosample)
 cli.add_command(sra)
 cli.add_command(ebi_biosample)
 cli.add_command(geo)
-
+cli.add_command(icite)
 
 if __name__ == "__main__":
     cli()
