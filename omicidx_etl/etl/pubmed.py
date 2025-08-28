@@ -1,5 +1,6 @@
 import re
 import datetime
+import click
 import pubmed_parser as pp
 from urllib.request import urlretrieve
 import tempfile
@@ -9,9 +10,9 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from loguru import logger
 
+
 # Module-level constants
 PUBMED_BASE = UPath("https://ftp.ncbi.nlm.nih.gov/pubmed")
-OUTPUT_UPATH = UPath("s3://biodatalake/pubmed")
 OUTPUT_EXTENSION = ".parquet"
 
 
@@ -35,19 +36,19 @@ def load_available_urls():
     return id_to_available_url_map
 
 
-def load_existing_urls():
+def load_existing_urls(output_path: UPath):
     """Load the existing urls from the output directory."""
-    existing_urls = list(OUTPUT_UPATH.glob(f"**/*{OUTPUT_EXTENSION}"))
+    existing_urls = list(output_path.glob(f"**/*{OUTPUT_EXTENSION}"))
     id_to_existing_url_map = {
         _url_to_pubmed_id(url): url for url in existing_urls
     }
     return id_to_existing_url_map
 
 
-def get_needed_ids(replace=False):
+def get_needed_ids(output_path: UPath, replace=False):
     """Return the ids that are needed to be processed."""
     available_urls = load_available_urls()
-    existing_urls = load_existing_urls()
+    existing_urls = load_existing_urls(output_path)
     
     in_ids = set(available_urls.keys())
     out_ids = set(existing_urls.keys())
@@ -58,26 +59,20 @@ def get_needed_ids(replace=False):
     return in_ids - out_ids
 
 
-def get_needed_urls(replace=False) -> list[UPath]:
+def get_needed_urls(output_path: UPath, replace=False) -> list[UPath]:
     """Return the urls that are needed to be processed."""
     available_urls = load_available_urls()
-    needed_ids = get_needed_ids(replace=replace)
+    needed_ids = get_needed_ids(output_path, replace=replace)
     return [available_urls[id] for id in needed_ids]
 
 
-def json_file_for_url(url: UPath) -> UPath:
-    """Get the json output file path for a given URL."""
-    fname_out = url.name.replace(".xml.gz", OUTPUT_EXTENSION)
-    return OUTPUT_UPATH / fname_out
-
-
-def parquet_file_for_url(url: UPath) -> UPath:
+def parquet_file_for_url(url: UPath, output_path: UPath) -> UPath:
     """Get the parquet output file path for a given URL."""
     fname_out = url.name.replace(".xml.gz", ".parquet")
-    return OUTPUT_UPATH / fname_out
+    return output_path / fname_out
 
 
-def pubmed_url_to_parquet_file(url: UPath) -> None:
+def pubmed_url_to_parquet_file(url: UPath, output_path: UPath) -> None:
     """Pubmed files as parquet asset
 
     This asset covers the entire pubmed corpus. It is partitioned by
@@ -99,8 +94,6 @@ def pubmed_url_to_parquet_file(url: UPath) -> None:
             reference_list=True,
             parse_downto_mesh_subterms=True,
         )
-        #with self.json_file_for_url(url).open("wb", compression="gzip") as outfile:
-        
         objects = []
         for obj in pubmed_article_generator:
             obj["_inserted_at"] = datetime.datetime.now()
@@ -110,19 +103,30 @@ def pubmed_url_to_parquet_file(url: UPath) -> None:
         # write the table to parquet locally first
         # then upload it to the final destination
         pq.write_table(pubmed_table, local_parquet_file.name, compression='zstd')
-        with parquet_file_for_url(url).open("wb") as outfile:
+        with parquet_file_for_url(url, output_path).open("wb") as outfile:
             logger.info(f"Writing {url} to {str(outfile)}")
             with open(local_parquet_file.name, 'rb') as infile:
                 shutil.copyfileobj(infile, outfile)
             logger.info(f"Finished writing {url} to {str(outfile)}")
 
 
-
-def etl_pubmeds(replace: bool = False):
-    needed_urls = get_needed_urls(replace=replace)
+def etl_pubmeds(output_path: UPath, replace: bool = False):
+    needed_urls = get_needed_urls(output_path, replace=replace)
     logger.info(f"Processing {len(needed_urls)} urls")
     for index, url in enumerate(needed_urls):
         logger.info("Processing url: " + str(url))
         logger.info(f"Processing {index + 1} of {len(needed_urls)}")
-        pubmed_url_to_parquet_file(url)  # type: ignore
+        pubmed_url_to_parquet_file(url, output_path)  # type: ignore
 
+@click.group()
+def pubmed():
+    pass
+
+
+@pubmed.command()
+@click.argument("output_dir", type=click.Path(exists=True))
+def extract(output_dir: str):
+    """Command-line interface for extraction and optional upload."""
+    output_path = UPath(output_dir)
+    logger.info(f"Starting extraction to {output_path}")
+    etl_pubmeds(output_path)
