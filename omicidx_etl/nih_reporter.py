@@ -8,10 +8,11 @@ import polars as pl
 import gzip
 from typing import Optional
 from datetime import datetime
+from loguru import logger
 
 # Use basic logging for now
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logging.getLogger('httpx').setLevel(logging.WARNING)
 
 # Configuration constants
 DEFAULT_OUTPUT_DIR = pathlib.Path("/tmp/omicidx/nih_reporter")
