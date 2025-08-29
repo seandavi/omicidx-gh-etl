@@ -17,13 +17,13 @@ class Settings(BaseSettings):
         extra="allow",
     )
 
-    PUBLISH_DIRECTORY: str
-    AWS_ACCESS_KEY_ID: str
-    AWS_SECRET_ACCESS_KEY: str
+    PUBLISH_DIRECTORY: Optional[str] = '/data/omicidx'
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
     AWS_ENDPOINT_URL: Optional[str] = None
-    R2_ACCESS_KEY_ID: str
-    R2_SECRET_ACCESS_KEY: str
-    R2_ACCOUNT_ID: str
+    R2_ACCESS_KEY_ID: Optional[str] = None
+    R2_SECRET_ACCESS_KEY: Optional[str] = None
+    R2_ACCOUNT_ID: Optional[str] = None
 
     @property
     def publish_directory(self) -> UPath:
