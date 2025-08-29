@@ -14,6 +14,8 @@
 
 ## Components
 
+Note that in the table descriptions below, details of last modified date, bytes, etc. are not routinely updated. 
+The important information is the schema description for each table. 
 
 ```
 Table omicidx-338300:biodatalake.src_ncbi__biosamples
