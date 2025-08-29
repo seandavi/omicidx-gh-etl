@@ -50,8 +50,13 @@ faulthandler.enable()
 )
 async def get_geo_soft(accession, client) -> str:
     """Fetches the GEO SOFT file for the given accession."""
-    url = f"https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?targ=self&acc={accession}&form=text&view=brief"
-    response = await client.get(url)
+    params = {}
+    params['acc'] = accession
+    params['targ'] = 'self'
+    params['form'] = 'text'
+    params['view'] = 'quick' if accession.startswith("GSM") else 'brief'
+    url = "https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi"
+    response = await client.get(url, params=params)
     response.raise_for_status()
     return response.text
 
@@ -149,16 +154,19 @@ async def write_geo_entity_worker(
             with open(gse_temp.name, "rb") as src:
                 with gse_path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
+            logger.info(f"Wrote {gse_path}")
 
         if gsm_written:
             with open(gsm_temp.name, "rb") as src:
                 with gsm_path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
+            logger.info(f"Wrote {gsm_path}")
 
         if gpl_written:
             with open(gpl_temp.name, "rb") as src:
                 with gpl_path.open("wb") as dst:
                     shutil.copyfileobj(src, dst)
+            logger.info(f"Wrote {gpl_path}")
 
     logger.info(f"Record counts: {record_counts}")
 
@@ -214,6 +222,61 @@ async def prod1(accessions_to_fetch_send: MemoryObjectSendStream, start_date, en
                 if len(json_results["esearchresult"]["idlist"]) < RETMAX:
                     break
                 offset += 5000
+
+@tenacity.retry(
+    wait=tenacity.wait_fixed(2),
+    stop=tenacity.stop_after_attempt(5),
+    retry=tenacity.retry_if_exception(
+        lambda e: (
+            (isinstance(e, httpx.HTTPStatusError) and e.response.status_code == 429)
+            or isinstance(
+                e,
+                (httpx.RemoteProtocolError, httpx.ConnectError, httpx.TimeoutException),
+            )
+        )
+    ),
+    before_sleep=lambda retry_state: logger.warning(
+        f"Entrez API request failed, retrying in 2 seconds (attempt {retry_state.attempt_number}/5)"
+    ),
+)
+def gse_with_rna_seq_counts() -> list[dict[str, str]]:
+    """GEO supplies a hidden filter for getting GSEs with RNA-seq counts
+    
+    The filter is at the level of GSEs, not GSMs. This function just 
+    applies the filter and returns a list of GSEs that have GEO/SRA-supplied
+    RNA-seq counts.
+    
+    It is very fast to run since it runs against eutils and only returns
+    ids. 
+    """
+    offset = 0
+    RETMAX = 5000
+    gses_with_rna_seq_counts = []
+    while True:
+        with httpx.Client(timeout=60) as client:
+            response = client.get(
+                "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi",
+                params={
+                    "db": "gds",
+                    "term": '"rnaseq+counts"[filter]',
+                    "retmode": "json",
+                    "retmax": RETMAX,
+                    "retstart": offset,
+                },
+            )
+            response.raise_for_status()
+            json_results = response.json()
+            for id in json_results["esearchresult"]["idlist"]:
+                gses_with_rna_seq_counts.append(
+                    {"accession": entrezid_to_geo(id)}
+                )
+            if len(json_results["esearchresult"]["idlist"]) < RETMAX:
+                break
+            offset += 5000
+    # dict of {"accession": <GSE_ACCESSION>}
+    # ready for polars.from_pylist() or writing out as json.
+    return gses_with_rna_seq_counts
+
 
 
 async def geo_metadata_by_date(
@@ -286,10 +349,6 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
         current_start = current_start + relativedelta(months=1)
 
     return monthly_ranges
-
-
-def task_load_to_bigquery(entity: str):
-    return load_to_bigquery(entity)
 
 
 async def main():
