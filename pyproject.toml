@@ -6,7 +6,7 @@ authors = [
     {name = "Sean Davis", email = "seandavi@gmail.com"},
 ]
 license = {text = "MIT"}
-requires-python = ">=3.9"
+requires-python = ">=3.13"
 dependencies = [
     "universal-pathlib >=0.2.2,<0.3.0",
     "rich >=13.7.1,<14.0.0",
@@ -15,10 +15,8 @@ dependencies = [
     "pubmed-parser @ git+https://github.com/seandavi/pubmed_parser",
     "gcsfs >=2023.0.0,<2024.0.0",
     "pydantic-settings >=2.3.3,<3.0.0",
-    "clickhouse-connect >=0.7.12,<0.8.0",
     "google-cloud-bigquery >=3.24.0,<4.0.0",
     "pandas >=2.2.2,<3.0.0",
-    "prefect[aws]>=3.4.2",
     "httpx>=0.28.1",
     "trio>=0.30.0",
     "python-dotenv[cli]>=1.1.0",
@@ -27,10 +25,9 @@ dependencies = [
     "ibis-framework[bigquery,duckdb]>=10.5.0",
     "prefect-aws>=0.5.10",
     "pyarrow>=20.0.0",
-    "dbos>=1.10.0",
     "loguru>=0.7.3",
     "tqdm>=4.67.1",
-    "polars>=1.32.2",
+    "polars-lts-cpu>=1.32.3",
 ]
 
 [project.optional-dependencies]
@@ -39,7 +36,7 @@ dev = [
 ]
 
 [project.scripts]
-pubmed = "omicidx_etl.etl.cli_pubmed:pubmed"
+oidx = "omicidx_etl.cli:cli"
 
 [build-system]
 requires = ["poetry-core>=1.5.0"] # Ensures poetry-core reads from [project]
