@@ -1,4 +1,3 @@
-import clickhouse_connect as ch
 from .config import settings
 import duckdb
 import contextlib
