@@ -6,6 +6,7 @@ from upath import UPath
 from datetime import timedelta, datetime, date
 from dateutil.relativedelta import relativedelta
 import click
+import orjson
 
 from ..config import settings
 
@@ -273,6 +274,8 @@ def gse_with_rna_seq_counts() -> list[dict[str, str]]:
             if len(json_results["esearchresult"]["idlist"]) < RETMAX:
                 break
             offset += 5000
+            import time
+            time.sleep(0.5)  # to avoid hitting the rate limit
     # dict of {"accession": <GSE_ACCESSION>}
     # ready for polars.from_pylist() or writing out as json.
     return gses_with_rna_seq_counts
@@ -352,6 +355,13 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
 
 
 async def main():
+    # Get the GSEs with RNA-seq counts
+    # updated each run since it is very fast
+    gses_with_rna_seq = gse_with_rna_seq_counts()
+    with gzip.open(OUTPUT_PATH / "gse_with_rna_seq_counts.jsonl.gz", "wb") as f:
+        for item in gses_with_rna_seq:
+            f.write(orjson.dumps(item) + b"\n")
+    logger.info(f"Wrote {len(gses_with_rna_seq)} GSEs with RNA-seq counts to {OUTPUT_PATH / 'gse_with_rna_seq_counts.jsonl.gz'}")
     start = "2005-01-01"
     end = date.today().strftime("%Y-%m-%d")
     ranges = get_monthly_ranges(start, end)
