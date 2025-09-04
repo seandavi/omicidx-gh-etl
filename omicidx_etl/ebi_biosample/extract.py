@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
+from typing import Iterable
 import tenacity
 import anyio
 import httpx
@@ -110,13 +111,14 @@ class SampleFetcher:
                             characteristics.append(val)
                     sample["characteristics"] = characteristics
                     yield sample
+
+                if "next" in response["_links"]:
+                    self.full_url = response["_links"]["next"]["href"]
+                else:
+                    self.completed()
+                    break
             except KeyError:
                 pass
-            if "next" in response["_links"]:
-                self.full_url = response["_links"]["next"]["href"]
-            else:
-                self.completed()
-                break
 
     async def process(self):
         """Process the samples from the EBI API.
