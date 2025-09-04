@@ -1,21 +1,19 @@
 import asyncio
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
-from typing import Generator, Iterable
 import tenacity
 import anyio
 import httpx
 import orjson
 from upath import UPath
 import shutil
-import logging
 import gzip
 from ..config import settings
 import click
 from loguru import logger
 
 
-output_dir = '/Users/davsean/data/omicidx/ebi_biosample_results'
+output_dir = '/Users/davsean/data/omicidx/ebi_biosample'
 
 
 def get_filename(
@@ -71,11 +69,8 @@ class SampleFetcher:
     @tenacity.retry(
         stop=tenacity.stop.stop_after_attempt(10),
         wait=tenacity.wait.wait_random_exponential(multiplier=1, max=40),
-        before=tenacity.before_log(
-            logger=logging.getLogger(__name__), log_level=logging.INFO
-        ),
-        after=tenacity.after_log(
-            logger=logging.getLogger(__name__), log_level=logging.INFO
+        before_sleep=lambda retry_state: logger.warning(
+            f"request request failed, retrying in {retry_state.upcoming_sleep} seconds (attempt {retry_state.attempt_number}/5)"
         ),
     )
     async def perform_request(self) -> dict:
@@ -135,6 +130,8 @@ class SampleFetcher:
         async for sample in self.fetch_next_set():
             self.fh.write(orjson.dumps(sample) + b"\n")
             metadata["record_count"] += 1
+            if metadata["record_count"] % 10000 == 0:
+                logger.info(f"Fetched {metadata['record_count']} samples so far")
 
     def completed(self):
         """Finalize the fetching process.
@@ -142,9 +139,9 @@ class SampleFetcher:
         This function is called when there are no more samples to fetch.
         It is mainly here to close the file handle.
         """
-        print("Completed fetching samples")
+        logger.info("Completed fetching samples")
         self.fh.close()
-        print(self)
+        logger.info(self)
         pass
 
 
@@ -166,14 +163,12 @@ def get_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[tuple]:
 
     while current_start <= end_date:
         # Calculate the end of the current month
-        current_end = (current_start + relativedelta(days=1)) - timedelta(days=1)
-        # Adjust the end date if it's beyond the given end_date
-        if current_end > end_date:
-            current_end = end_date
+        current_end = (current_start + relativedelta(months=1)) - timedelta(days=1)
+
         date_ranges.append((current_start.date(), current_end.date()))
         yield (current_start.date(), current_end.date())
         # Move to the first day of the next month
-        current_start = current_start + relativedelta(days=1)
+        current_start = current_start + relativedelta(months=1)
 
 
 async def process_by_dates(start_date, end_date):
@@ -202,7 +197,7 @@ async def process_by_dates(start_date, end_date):
         os.unlink(get_filename(start_date, end_date, tmp=True))
     # touch filename with .done extension
     UPath(get_filename(start_date, end_date, tmp=False) + ".done").touch()
-    print(f"Finished processing {start_date} to {end_date}")
+    logger.info(f"Finished processing {start_date} to {end_date}")
 
 
 async def limited_process(semaphore, start_date, end_date):
@@ -214,15 +209,16 @@ async def limited_process(semaphore, start_date, end_date):
 async def main():
     start = "2021-01-01"
     end = datetime.now().strftime("%Y-%m-%d")
+    current_date = datetime.now().date()
     semaphore = anyio.Semaphore(20)  # Limit to 10 concurrent tasks
-    
+
     logger.info(f"Starting EBI Biosample extraction from {start} to {end}")
 
     async with anyio.create_task_group() as task_group:
         for start_date, end_date in get_date_ranges(start, end):
             if not UPath(
                 get_filename(start_date, end_date, tmp=False) + ".done"
-            ).exists():
+            ).exists() and current_date < end_date: # repeat current month
                 task_group.start_soon(limited_process, semaphore, start_date, end_date)
 
 
@@ -234,8 +230,8 @@ def ebi_biosample():
 @click.argument("output_dir", type=click.Path(exists=True))
 def extract(output_dir: click.Path):
     asyncio.run(main())
-    
-    
+
+
 if __name__ == "__main__":
     logger.info("Starting EBI Biosample extraction")
     asyncio.run(main())
