@@ -46,3 +46,8 @@ build-backend = "poetry.core.masonry.api"
 # All other metadata and dependencies are now in the [project] section.
 [tool.poetry]
 packages = [{include = "omicidx_etl"}]
+
+[dependency-groups]
+dev = [
+    "pydoc-markdown>=4.8.2",
+]
