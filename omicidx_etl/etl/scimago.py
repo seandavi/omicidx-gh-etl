@@ -1,48 +1,61 @@
 import pandas
-from prefect import flow, get_run_logger
-from google.cloud import bigquery
 import re
 from pathlib import Path
+import click
+from loguru import logger
+from upath import UPath
 
-PROJECT_ID = "omicidx-338300"
-DATASET_ID = "biodatalake"
-TABLE_ID = "src_scimago__journal_impact_factors"
+
+SCIMAGO_URL = "https://www.scimagojr.com/journalrank.php?out=xls"
 
 
-@flow
-def ingest_scimago_flow() -> None:
-    get_run_logger().info("Ingesting Scimago Journal Impact Factors")
-    scimago = pandas.read_csv(
-        "https://www.scimagojr.com/journalrank.php?out=xls", delimiter=";"
-    )
+def fetch_and_save_scimago(output_path: UPath) -> None:
+    """Fetch Scimago Journal Impact Factors and save to NDJSON format.
 
+    Args:
+        output_path: Directory where the output file will be saved
+    """
+    logger.info("Fetching Scimago Journal Impact Factors")
+
+    # Fetch the data
+    scimago = pandas.read_csv(SCIMAGO_URL, delimiter=";")
+
+    # Clean column names
     scimago.rename(
         lambda x: re.sub(r"[^\w\d_]+", "_", x.lower()).strip("_"),
         axis="columns",
         inplace=True,
     )
 
-    get_run_logger().info("Ingested Scimago Journal Impact Factors")
-    scimago.to_json("scimago.ndjson.gz", orient="records", lines=True)
-    get_run_logger().info("Saved Scimago Journal Impact Factors to ndjson.gz")
-    job_config = bigquery.LoadJobConfig(
-        write_disposition="WRITE_TRUNCATE",
-        autodetect=True,
-        source_format="NEWLINE_DELIMITED_JSON",
-    )
-    client = bigquery.Client()
-    table_ref = bigquery.TableReference.from_string(
-        f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
-    )
-    res = client.load_table_from_file(
-        open("scimago.ndjson.gz", "rb"),
-        destination=table_ref,
-        job_config=job_config,
-    )
-    get_run_logger().info(f"Loaded Scimago to BigQuery table {table_ref}")
-    get_run_logger().info(res.result())
-    Path("scimago.ndjson.gz").unlink()
+    logger.info(f"Fetched {len(scimago)} journal records")
+
+    # Ensure output directory exists
+    output_path.mkdir(parents=True, exist_ok=True)
+
+    # Save to NDJSON format
+    output_file = output_path / "scimago.ndjson.gz"
+    scimago.to_json(output_file, orient="records", lines=True, compression="gzip")
+
+    logger.info(f"Saved Scimago Journal Impact Factors to {output_file}")
+
+
+@click.group()
+def scimago():
+    """OmicIDX ETL Pipeline - Scimago journal impact factors."""
+    pass
+
+
+@scimago.command()
+@click.argument("output_dir", type=UPath)
+def extract(output_dir: UPath):
+    """Extract Scimago journal impact factors.
+
+    Args:
+        output_dir: Directory where the output file will be saved
+    """
+    logger.info(f"Starting Scimago extraction to {output_dir}")
+    fetch_and_save_scimago(output_dir)
 
 
 if __name__ == "__main__":
-    ingest_scimago_flow()
+    scimago()
