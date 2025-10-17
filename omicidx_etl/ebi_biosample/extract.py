@@ -14,7 +14,7 @@ import click
 from loguru import logger
 
 
-output_dir = '/Users/davsean/data/omicidx/ebi_biosample'
+output_dir = str(UPath(settings.PUBLISH_DIRECTORY) / "ebi_biosample")
 
 
 def get_filename(
@@ -220,7 +220,8 @@ async def main():
         for start_date, end_date in get_date_ranges(start, end):
             if not UPath(
                 get_filename(start_date, end_date, tmp=False) + ".done"
-            ).exists() and current_date < end_date: # repeat current month
+            ).exists(): # and current_date < end_date: # repeat current month
+                logger.info(f"Scheduling processing for {start_date} to {end_date}")
                 task_group.start_soon(limited_process, semaphore, start_date, end_date)
 
 
