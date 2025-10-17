@@ -27,7 +27,7 @@ import shutil
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-OUTPUT_PATH = UPath("/Users/davsean/data/omicidx") / "geo"
+OUTPUT_PATH = UPath(settings.PUBLISH_DIRECTORY) / "geo"
 OUTPUT_DIR = str(OUTPUT_PATH)
 
 faulthandler.enable()
