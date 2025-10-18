@@ -8,13 +8,12 @@ import orjson
 import re
 import os
 from pathlib import Path
-import logging
 from omicidx.sra.parser import sra_object_generator
 from upath import UPath
 from ..db import duckdb_connection
 import httpx
-
-logger = logging.getLogger(__name__)
+import click
+from loguru import logger
 
 # Output format constants
 OUTPUT_FORMAT_PARQUET = "parquet"
@@ -435,7 +434,7 @@ def remove_semaphore_file(output_dir: Path, prefix: str) -> bool:
 
 
 def extract_and_upload(
-    output_dir: Path, 
+    output_dir: Path,
     upload: bool = True,
     max_workers: int = 4,
     output_format: str = OUTPUT_FORMAT_PARQUET,
@@ -443,5 +442,58 @@ def extract_and_upload(
 ) -> dict[str, int]:
     """Extract all SRA files and optionally upload to R2."""
     results = extract_sra(output_dir, max_workers, output_format, include_accessions)
-    
+
     return results
+
+
+# CLI Commands
+
+@click.group()
+def sra():
+    """SRA extraction commands."""
+    pass
+
+
+@sra.command()
+@click.argument('output_dir', type=click.Path(path_type=Path))
+@click.option('--format', 'output_format',
+              type=click.Choice([OUTPUT_FORMAT_PARQUET, OUTPUT_FORMAT_NDJSON]),
+              default=OUTPUT_FORMAT_PARQUET,
+              help='Output format (default: parquet)')
+@click.option('--workers', default=4, help='Number of parallel workers (default: 4)')
+@click.option('--include-accessions/--no-accessions', default=True,
+              help='Include SRA accessions extraction (default: yes)')
+def extract(output_dir: Path, output_format: str, workers: int, include_accessions: bool):
+    """Extract SRA data to local files."""
+    logger.info(f"Starting SRA extraction to {output_dir}")
+    logger.info(f"Format: {output_format}, Workers: {workers}, Accessions: {include_accessions}")
+
+    results = extract_sra(
+        output_dir, max_workers=workers,
+        output_format=output_format, include_accessions=include_accessions
+    )
+
+    return results
+
+
+@sra.command()
+@click.argument('output_dir', type=click.Path(exists=True, path_type=Path))
+@click.option('--format', 'output_format',
+              type=click.Choice([OUTPUT_FORMAT_PARQUET, OUTPUT_FORMAT_NDJSON]),
+              default=OUTPUT_FORMAT_PARQUET,
+              help='File format to analyze (default: parquet)')
+def stats(output_dir: Path, output_format: str):
+    """Show statistics about extracted files."""
+    stats_data = get_file_stats(output_dir, output_format)
+
+    for entity, info in stats_data.items():
+        click.echo(f"\n{entity.upper()} Files:")
+        click.echo(f"  Count: {info['file_count']}")
+        click.echo(f"  Total Size: {info['total_size_mb']:.2f} MB")
+
+        if info['files']:
+            click.echo("  Files:")
+            for filename in info['files'][:10]:  # Show first 10 files
+                click.echo(f"    - {filename}")
+            if len(info['files']) > 10:
+                click.echo(f"    ... and {len(info['files']) - 10} more")
