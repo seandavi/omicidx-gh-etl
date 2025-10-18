@@ -14,6 +14,7 @@ This document tracks improvements to enhance maintainability and homogeneity acr
 
 - [x] **Fix unused CLI argument in ebi_biosample** - The extract command now properly accepts and uses the `--output-dir` option (converted from unused argument to functional optional flag with default)
 - [x] **Standardize async library usage** - All modules now use anyio consistently (ebi_biosample converted from asyncio.run to anyio.run)
+- [x] **Consolidate module structure** - Moved sra CLI commands from separate cli.py into extract.py to match the pattern used by all other modules
 
 ## Medium Priority Improvements
 
@@ -41,23 +42,9 @@ Three modules lack README.md files that would help with onboarding and maintenan
   - Document each module's purpose and output format
   - Include usage examples for each command
 
-### 6. Consolidate Module Structure
-
-**Issue:** The sra module is the only one with a separate `cli.py` file
-
-**Files:**
-- `omicidx_etl/sra/cli.py` - separate CLI file
-- `omicidx_etl/sra/extract.py` - extraction logic
-
-**Options:**
-- **Option A:** Keep current pattern (most modules mix CLI + logic)
-- **Option B:** Extract CLI to separate files for all modules (like sra)
-
-**Recommendation:** Option A - document this as the standard. Consider refactoring sra to match if it's not complex.
-
 ## Low Priority Improvements
 
-### 7. Standardize Date Range Functions
+### 6. Standardize Date Range Functions
 
 **Issue:** Both ebi_biosample and geo have nearly identical date range functions
 
@@ -82,7 +69,7 @@ def get_monthly_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[
     ...
 ```
 
-### 8. Standardize Retry Configuration
+### 7. Standardize Retry Configuration
 
 **Issue:** Different modules use slightly different tenacity retry configurations
 
@@ -109,7 +96,7 @@ http_retry = retry(
 )
 ```
 
-### 9. Unused Import Cleanup
+### 8. Unused Import Cleanup
 
 Minor code quality improvements:
 
@@ -117,7 +104,7 @@ Minor code quality improvements:
 - [ ] `omicidx_etl/geo/extract.py:277` - move `time` import to top of file
 - [ ] Run linter to find other unused imports
 
-### 10. Add Type Hints Consistently
+### 9. Add Type Hints Consistently
 
 **Issue:** Some modules have better type hints than others
 
