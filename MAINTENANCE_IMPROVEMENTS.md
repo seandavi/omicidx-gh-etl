@@ -13,6 +13,7 @@ This document tracks improvements to enhance maintainability and homogeneity acr
 ## ✅ Completed (Medium Priority)
 
 - [x] **Fix unused CLI argument in ebi_biosample** - The extract command now properly accepts and uses the `--output-dir` option (converted from unused argument to functional optional flag with default)
+- [x] **Standardize async library usage** - All modules now use anyio consistently (ebi_biosample converted from asyncio.run to anyio.run)
 
 ## Medium Priority Improvements
 
@@ -40,19 +41,7 @@ Three modules lack README.md files that would help with onboarding and maintenan
   - Document each module's purpose and output format
   - Include usage examples for each command
 
-### 6. Standardize Async Library Usage
-
-**Issue:** Modules use different async libraries
-
-- **ebi_biosample** uses `asyncio` + `anyio.Semaphore`
-- **geo** uses `anyio` exclusively
-
-**Recommendation:** Standardize on `anyio` throughout (it's already being used and is more portable)
-
-**Files to update:**
-- `omicidx_etl/ebi_biosample/extract.py` - change `asyncio.run(main())` to `anyio.run(main)`
-
-### 7. Consolidate Module Structure
+### 6. Consolidate Module Structure
 
 **Issue:** The sra module is the only one with a separate `cli.py` file
 
@@ -68,7 +57,7 @@ Three modules lack README.md files that would help with onboarding and maintenan
 
 ## Low Priority Improvements
 
-### 8. Standardize Date Range Functions
+### 7. Standardize Date Range Functions
 
 **Issue:** Both ebi_biosample and geo have nearly identical date range functions
 
@@ -93,7 +82,7 @@ def get_monthly_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[
     ...
 ```
 
-### 9. Standardize Retry Configuration
+### 8. Standardize Retry Configuration
 
 **Issue:** Different modules use slightly different tenacity retry configurations
 
@@ -120,7 +109,7 @@ http_retry = retry(
 )
 ```
 
-### 10. Unused Import Cleanup
+### 9. Unused Import Cleanup
 
 Minor code quality improvements:
 
@@ -128,7 +117,7 @@ Minor code quality improvements:
 - [ ] `omicidx_etl/geo/extract.py:277` - move `time` import to top of file
 - [ ] Run linter to find other unused imports
 
-### 11. Add Type Hints Consistently
+### 10. Add Type Hints Consistently
 
 **Issue:** Some modules have better type hints than others
 
