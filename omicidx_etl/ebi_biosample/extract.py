@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime, timedelta, date
 from dateutil.relativedelta import relativedelta
 from typing import Iterable
@@ -250,9 +249,9 @@ def extract(output_dir: str):
         output_dir = str(UPath(settings.PUBLISH_DIRECTORY) / "ebi_biosample")
 
     logger.info(f"Using output directory: {output_dir}")
-    asyncio.run(main(output_dir))
+    anyio.run(main, output_dir)
 
 
 if __name__ == "__main__":
     logger.info("Starting EBI Biosample extraction")
-    asyncio.run(main())
+    anyio.run(main)
