@@ -10,6 +10,10 @@ This document tracks improvements to enhance maintainability and homogeneity acr
 - [x] Remove logging.basicConfig() from geo/extract.py (standardize on loguru)
 - [x] Refactor etl/scimago.py to remove Prefect and use Click
 
+## ✅ Completed (Medium Priority)
+
+- [x] **Fix unused CLI argument in ebi_biosample** - The extract command now properly accepts and uses the `--output-dir` option (converted from unused argument to functional optional flag with default)
+
 ## Medium Priority Improvements
 
 ### 5. Add Missing Documentation
@@ -36,26 +40,7 @@ Three modules lack README.md files that would help with onboarding and maintenan
   - Document each module's purpose and output format
   - Include usage examples for each command
 
-### 6. Standardize CLI Argument Handling
-
-**Issue:** ebi_biosample extract command accepts an `output_dir` argument but never uses it
-
-**Location:** `omicidx_etl/ebi_biosample/extract.py:232-235`
-
-```python
-@ebi_biosample.command()
-@click.argument("output_dir", type=click.Path(exists=True))
-def extract(output_dir: click.Path):
-    asyncio.run(main())  # output_dir is never passed!
-```
-
-**Options:**
-- **Option A:** Remove the unused argument (simplest)
-- **Option B:** Pass it through to main() and use it instead of module-level output_dir
-
-**Recommendation:** Option B - make it actually configurable at runtime
-
-### 7. Standardize Async Library Usage
+### 6. Standardize Async Library Usage
 
 **Issue:** Modules use different async libraries
 
@@ -67,7 +52,7 @@ def extract(output_dir: click.Path):
 **Files to update:**
 - `omicidx_etl/ebi_biosample/extract.py` - change `asyncio.run(main())` to `anyio.run(main)`
 
-### 8. Consolidate Module Structure
+### 7. Consolidate Module Structure
 
 **Issue:** The sra module is the only one with a separate `cli.py` file
 
@@ -83,7 +68,7 @@ def extract(output_dir: click.Path):
 
 ## Low Priority Improvements
 
-### 9. Standardize Date Range Functions
+### 8. Standardize Date Range Functions
 
 **Issue:** Both ebi_biosample and geo have nearly identical date range functions
 
@@ -108,7 +93,7 @@ def get_monthly_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[
     ...
 ```
 
-### 10. Standardize Retry Configuration
+### 9. Standardize Retry Configuration
 
 **Issue:** Different modules use slightly different tenacity retry configurations
 
@@ -135,7 +120,7 @@ http_retry = retry(
 )
 ```
 
-### 11. Unused Import Cleanup
+### 10. Unused Import Cleanup
 
 Minor code quality improvements:
 
@@ -143,7 +128,7 @@ Minor code quality improvements:
 - [ ] `omicidx_etl/geo/extract.py:277` - move `time` import to top of file
 - [ ] Run linter to find other unused imports
 
-### 12. Add Type Hints Consistently
+### 11. Add Type Hints Consistently
 
 **Issue:** Some modules have better type hints than others
 
