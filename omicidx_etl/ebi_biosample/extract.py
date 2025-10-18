@@ -45,18 +45,20 @@ class SampleFetcher:
         size: int = 200,
         start_date: date = date.today(),
         end_date: date = date.today(),
+        output_directory: str = output_dir,
     ):
         self.cursor = cursor
         self.size = size
         self.start_date = start_date
         self.end_date = end_date
+        self.output_directory = output_directory
         self.base_url = BASEURL
         self.full_url = None
         self.any_samples = False
         self.upath = UPath(settings.PUBLISH_DIRECTORY) / get_filename(
-            start_date, end_date, tmp=True
+            start_date, end_date, tmp=True, output_directory=output_directory
         )
-        self.fh = gzip.open(get_filename(start_date, end_date, tmp=True), "wb")
+        self.fh = gzip.open(get_filename(start_date, end_date, tmp=True, output_directory=output_directory), "wb")
 
     def date_filter_string(self) -> str:
         """Get the filter string for a given date range.
@@ -173,7 +175,7 @@ def get_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[tuple]:
         current_start = current_start + relativedelta(months=1)
 
 
-async def process_by_dates(start_date, end_date):
+async def process_by_dates(start_date, end_date, output_directory: str = output_dir):
     """Process single date range.
 
     This function fetches samples from the EBI API for a given date range
@@ -186,43 +188,45 @@ async def process_by_dates(start_date, end_date):
         size=200,
         start_date=start_date,
         end_date=end_date,
+        output_directory=output_directory,
     )
     await fetcher.process()
     if fetcher.any_samples:
         shutil.move(
-            get_filename(start_date, end_date, tmp=True),
-            get_filename(start_date, end_date, tmp=False),
+            get_filename(start_date, end_date, tmp=True, output_directory=output_directory),
+            get_filename(start_date, end_date, tmp=False, output_directory=output_directory),
         )
     else:
         import os
 
-        os.unlink(get_filename(start_date, end_date, tmp=True))
+        os.unlink(get_filename(start_date, end_date, tmp=True, output_directory=output_directory))
     # touch filename with .done extension
-    UPath(get_filename(start_date, end_date, tmp=False) + ".done").touch()
+    UPath(get_filename(start_date, end_date, tmp=False, output_directory=output_directory) + ".done").touch()
     logger.info(f"Finished processing {start_date} to {end_date}")
 
 
-async def limited_process(semaphore, start_date, end_date):
+async def limited_process(semaphore, start_date, end_date, output_directory: str = output_dir):
     """This function is a wrapper around process_by_dates that limits the number of concurrent tasks."""
     async with semaphore:
-        await process_by_dates(start_date, end_date)
+        await process_by_dates(start_date, end_date, output_directory)
 
 
-async def main():
+async def main(output_directory: str = output_dir):
     start = "2021-01-01"
     end = datetime.now().strftime("%Y-%m-%d")
     current_date = datetime.now().date()
     semaphore = anyio.Semaphore(20)  # Limit to 10 concurrent tasks
 
     logger.info(f"Starting EBI Biosample extraction from {start} to {end}")
+    logger.info(f"Output directory: {output_directory}")
 
     async with anyio.create_task_group() as task_group:
         for start_date, end_date in get_date_ranges(start, end):
             if not UPath(
-                get_filename(start_date, end_date, tmp=False) + ".done"
+                get_filename(start_date, end_date, tmp=False, output_directory=output_directory) + ".done"
             ).exists(): # and current_date < end_date: # repeat current month
                 logger.info(f"Scheduling processing for {start_date} to {end_date}")
-                task_group.start_soon(limited_process, semaphore, start_date, end_date)
+                task_group.start_soon(limited_process, semaphore, start_date, end_date, output_directory)
 
 
 @click.group()
@@ -230,9 +234,23 @@ def ebi_biosample():
     pass
 
 @ebi_biosample.command()
-@click.argument("output_dir", type=click.Path(exists=True))
-def extract(output_dir: click.Path):
-    asyncio.run(main())
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help=f"Output directory for extracted data (default: {output_dir})",
+)
+def extract(output_dir: str):
+    """Extract EBI Biosample data.
+
+    Fetches biosample data from EBI API and saves to NDJSON format,
+    organized by monthly date ranges.
+    """
+    if output_dir is None:
+        output_dir = str(UPath(settings.PUBLISH_DIRECTORY) / "ebi_biosample")
+
+    logger.info(f"Using output directory: {output_dir}")
+    asyncio.run(main(output_dir))
 
 
 if __name__ == "__main__":
