@@ -1,8 +1,8 @@
 """
 Data transformation module using DuckDB.
 
-This module provides transformation capabilities to consolidate and process
-extracted data. Transformations can be added as functions and called via CLI.
+This module orchestrates transformations across different data sources
+using modular transformation functions organized by domain.
 """
 
 from pathlib import Path
@@ -11,149 +11,7 @@ import click
 from loguru import logger
 from .db import duckdb_connection
 from .config import settings
-
-
-def consolidate_sra_entities(
-    extract_dir: Path,
-    output_dir: Path
-) -> dict[str, int]:
-    """
-    Consolidate chunked SRA parquet files into single files per entity type.
-
-    SRA extraction creates chunked files like:
-    - 20251001_Full-experiment-0001.parquet
-    - 20251001_Full-experiment-0002.parquet
-    - etc.
-
-    This consolidates them into:
-    - experiments.parquet
-    - runs.parquet
-    - samples.parquet
-    - studies.parquet
-
-    Args:
-        extract_dir: Directory containing extracted SRA parquet files
-        output_dir: Directory where consolidated files will be written
-
-    Returns:
-        Dictionary with entity type and row counts
-    """
-    sra_dir = extract_dir / "sra"
-
-    if not sra_dir.exists():
-        raise ValueError(f"SRA directory not found: {sra_dir}")
-
-    logger.info(f"Consolidating SRA data from {sra_dir}")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    results = {}
-
-    with duckdb_connection() as con:
-        # Define entity types to consolidate
-        entities = ["experiment", "run", "sample", "study"]
-
-        for entity in entities:
-            logger.info(f"Consolidating {entity} files...")
-
-            # Pattern to match all chunks for this entity
-            pattern = str(sra_dir / f"*{entity}*.parquet")
-
-            # Check if files exist
-            file_count = con.execute(f"""
-                SELECT COUNT(*) as cnt
-                FROM glob('{pattern}')
-            """).fetchone()[0]
-
-            if file_count == 0:
-                logger.warning(f"No {entity} files found matching pattern: {pattern}")
-                results[entity] = 0
-                continue
-
-            logger.info(f"Found {file_count} {entity} file(s)")
-
-            # Consolidate all chunks into single table
-            output_path = output_dir / f"{entity}s.parquet"
-
-            con.execute(f"""
-                COPY (
-                    SELECT * FROM read_parquet('{pattern}')
-                ) TO '{output_path}' (FORMAT PARQUET, COMPRESSION ZSTD)
-            """)
-
-            # Get row count
-            row_count = con.execute(f"""
-                SELECT COUNT(*) as cnt
-                FROM read_parquet('{output_path}')
-            """).fetchone()[0]
-
-            results[entity] = row_count
-            logger.info(f"✓ Created {output_path} with {row_count:,} rows")
-
-    return results
-
-
-def run_custom_transformations(
-    extract_dir: Path,
-    output_dir: Path
-) -> dict[str, any]:
-    """
-    Run custom DuckDB transformations on extracted data.
-
-    Add your own transformation queries here. Examples:
-    - Aggregations across datasets
-    - Joins between SRA, biosample, GEO
-    - Summary statistics
-    - Data quality checks
-
-    Args:
-        extract_dir: Directory containing all extracted data
-        output_dir: Directory where transformed data will be written
-
-    Returns:
-        Dictionary with transformation results
-    """
-    logger.info("Running custom transformations")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    results = {}
-
-    with duckdb_connection() as con:
-        # Example: Create a study summary with counts
-        logger.info("Creating study summary...")
-
-        try:
-            con.execute(f"""
-                CREATE OR REPLACE TABLE study_summary AS
-                SELECT
-                    accession,
-                    COUNT(*) as record_count
-                FROM read_parquet('{extract_dir}/sra/*study*.parquet')
-                GROUP BY accession
-                ORDER BY record_count DESC
-            """)
-
-            # Export to parquet
-            study_summary_path = output_dir / "study_summary.parquet"
-            con.execute(f"""
-                COPY study_summary TO '{study_summary_path}'
-                (FORMAT PARQUET, COMPRESSION ZSTD)
-            """)
-
-            row_count = con.execute("SELECT COUNT(*) FROM study_summary").fetchone()[0]
-            results["study_summary"] = row_count
-            logger.info(f"✓ Created study_summary.parquet with {row_count:,} studies")
-
-        except Exception as e:
-            logger.warning(f"Study summary transformation failed: {e}")
-            results["study_summary"] = None
-
-        # Add more transformations here as needed:
-        # - Join SRA with biosample data
-        # - Aggregate by organism
-        # - Calculate quality metrics
-        # etc.
-
-    return results
+from .transformations import sra, biosample, geo
 
 
 def run_all_transformations(
@@ -161,7 +19,10 @@ def run_all_transformations(
     output_dir: Optional[Path] = None
 ) -> dict[str, any]:
     """
-    Run all transformation steps.
+    Run all data transformations.
+
+    This consolidates chunked parquet/NDJSON files and creates summary tables.
+    Transformations are organized by data source for modularity.
 
     Args:
         extract_dir: Directory containing extracted data
@@ -185,39 +46,97 @@ def run_all_transformations(
     logger.info(f"Extract directory: {extract_dir}")
     logger.info(f"Output directory: {output_dir}")
 
+    output_dir.mkdir(parents=True, exist_ok=True)
+
     all_results = {}
 
-    # Step 1: Consolidate SRA entities
-    try:
-        logger.info("\nStep 1: Consolidating SRA entities...")
-        sra_results = consolidate_sra_entities(extract_dir, output_dir)
-        all_results["sra_consolidation"] = sra_results
-    except Exception as e:
-        logger.error(f"SRA consolidation failed: {e}")
-        all_results["sra_consolidation"] = {"error": str(e)}
+    with duckdb_connection() as con:
+        # Stage 1: SRA Transformations
+        logger.info("\n" + "=" * 60)
+        logger.info("Stage 1: SRA Consolidation")
+        logger.info("=" * 60)
 
-    # Step 2: Custom transformations
-    try:
-        logger.info("\nStep 2: Running custom transformations...")
-        custom_results = run_custom_transformations(extract_dir, output_dir)
-        all_results["custom_transformations"] = custom_results
-    except Exception as e:
-        logger.error(f"Custom transformations failed: {e}")
-        all_results["custom_transformations"] = {"error": str(e)}
+        try:
+            sra_results = sra.consolidate_entities(con, extract_dir, output_dir)
+            all_results["sra_consolidation"] = sra_results
 
-    logger.info("=" * 60)
+            # Create SRA summary if consolidation succeeded
+            if sra_results and any(sra_results.values()):
+                sra_summary_count = sra.create_study_summary(con, output_dir)
+                all_results["sra_study_summary"] = sra_summary_count
+        except Exception as e:
+            logger.error(f"SRA transformations failed: {e}")
+            all_results["sra_consolidation"] = {"error": str(e)}
+
+        # Stage 2: Biosample Transformations
+        logger.info("\n" + "=" * 60)
+        logger.info("Stage 2: Biosample/Bioproject Consolidation")
+        logger.info("=" * 60)
+
+        try:
+            biosample_count = biosample.consolidate_biosamples(con, extract_dir, output_dir)
+            all_results["biosamples"] = biosample_count
+
+            bioproject_count = biosample.consolidate_bioprojects(con, extract_dir, output_dir)
+            all_results["bioprojects"] = bioproject_count
+
+            ebi_biosample_count = biosample.consolidate_ebi_biosamples(con, extract_dir, output_dir)
+            all_results["ebi_biosamples"] = ebi_biosample_count
+        except Exception as e:
+            logger.error(f"Biosample transformations failed: {e}")
+            all_results["biosample_consolidation"] = {"error": str(e)}
+
+        # Stage 3: GEO Transformations
+        logger.info("\n" + "=" * 60)
+        logger.info("Stage 3: GEO Consolidation")
+        logger.info("=" * 60)
+
+        try:
+            gse_count = geo.consolidate_gse(con, extract_dir, output_dir)
+            all_results["geo_series"] = gse_count
+
+            gsm_count = geo.consolidate_gsm(con, extract_dir, output_dir)
+            all_results["geo_samples"] = gsm_count
+
+            gpl_count = geo.consolidate_gpl(con, extract_dir, output_dir)
+            all_results["geo_platforms"] = gpl_count
+        except Exception as e:
+            logger.error(f"GEO transformations failed: {e}")
+            all_results["geo_consolidation"] = {"error": str(e)}
+
+    # Summary
+    logger.info("\n" + "=" * 60)
     logger.info("Transformation Summary")
     logger.info("=" * 60)
 
-    for step_name, step_results in all_results.items():
-        logger.info(f"\n{step_name}:")
-        if isinstance(step_results, dict):
-            for key, value in step_results.items():
-                if isinstance(value, int):
-                    logger.info(f"  {key}: {value:,} rows")
-                else:
-                    logger.info(f"  {key}: {value}")
+    # SRA
+    logger.info("\nSRA:")
+    if "sra_consolidation" in all_results:
+        sra_results = all_results["sra_consolidation"]
+        if isinstance(sra_results, dict) and "error" not in sra_results:
+            for entity, count in sra_results.items():
+                if count:
+                    logger.info(f"  {entity}: {count:,} rows")
+        elif isinstance(sra_results, dict) and "error" in sra_results:
+            logger.error(f"  Error: {sra_results['error']}")
 
+    if "sra_study_summary" in all_results:
+        logger.info(f"  study_summary: {all_results['sra_study_summary']:,} rows")
+
+    # Biosample
+    logger.info("\nBiosample:")
+    for key in ["biosamples", "bioprojects", "ebi_biosamples"]:
+        if key in all_results and all_results[key]:
+            logger.info(f"  {key}: {all_results[key]:,} rows")
+
+    # GEO
+    logger.info("\nGEO:")
+    for key in ["geo_series", "geo_samples", "geo_platforms"]:
+        if key in all_results and all_results[key]:
+            logger.info(f"  {key}: {all_results[key]:,} rows")
+
+    logger.info("\n" + "=" * 60)
+    logger.info(f"Output directory: {output_dir}")
     logger.info("=" * 60)
 
     return all_results
@@ -248,8 +167,11 @@ def run(extract_dir: Optional[Path], output_dir: Optional[Path]):
     """
     Run all data transformations.
 
-    This consolidates chunked parquet files and runs custom transformations.
-    Output is written to the transformed/ directory.
+    This consolidates chunked parquet files and creates summary tables.
+    Organized by data source:
+    - SRA: studies, experiments, samples, runs + summary
+    - Biosample: biosamples, bioprojects, ebi_biosamples
+    - GEO: series (GSE), samples (GSM), platforms (GPL)
 
     Examples:
 
@@ -263,10 +185,10 @@ def run(extract_dir: Optional[Path], output_dir: Optional[Path]):
         results = run_all_transformations(extract_dir, output_dir)
 
         # Check for errors
-        errors = [
-            step for step, result in results.items()
-            if isinstance(result, dict) and "error" in result
-        ]
+        errors = []
+        for key, value in results.items():
+            if isinstance(value, dict) and "error" in value:
+                errors.append(key)
 
         if errors:
             logger.error(f"Transformations completed with errors in: {', '.join(errors)}")
@@ -292,13 +214,28 @@ def run(extract_dir: Optional[Path], output_dir: Optional[Path]):
     default=None,
     help='Directory for consolidated data (default: extract-dir/transformed)'
 )
-def consolidate(extract_dir: Optional[Path], output_dir: Optional[Path]):
+@click.option(
+    '--source',
+    type=click.Choice(['sra', 'biosample', 'geo', 'all']),
+    default='all',
+    help='Which data source to consolidate (default: all)'
+)
+def consolidate(extract_dir: Optional[Path], output_dir: Optional[Path], source: str):
     """
-    Consolidate chunked SRA parquet files only.
+    Consolidate chunked files for specific data sources.
 
-    This combines all experiment/run/sample/study chunks into single files
-    per entity type. Useful for running consolidation separately from other
-    transformations.
+    Useful for running consolidation separately or for specific sources.
+
+    Examples:
+
+        # Consolidate all sources
+        oidx transform consolidate
+
+        # Consolidate only SRA
+        oidx transform consolidate --source sra
+
+        # Consolidate only GEO
+        oidx transform consolidate --source geo
     """
     if extract_dir is None:
         extract_dir = Path(settings.PUBLISH_DIRECTORY)
@@ -306,14 +243,44 @@ def consolidate(extract_dir: Optional[Path], output_dir: Optional[Path]):
     if output_dir is None:
         output_dir = extract_dir / "transformed"
 
-    logger.info(f"Consolidating SRA files from {extract_dir}")
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Consolidating {source} files from {extract_dir}")
 
     try:
-        results = consolidate_sra_entities(extract_dir, output_dir)
+        with duckdb_connection() as con:
+            if source in ['sra', 'all']:
+                logger.info("\nConsolidating SRA...")
+                sra_results = sra.consolidate_entities(con, extract_dir, output_dir)
+                for entity, count in sra_results.items():
+                    if count:
+                        logger.info(f"  {entity}: {count:,} rows")
 
-        logger.info("\nConsolidation Summary:")
-        for entity, count in results.items():
-            logger.info(f"  {entity}: {count:,} rows")
+            if source in ['biosample', 'all']:
+                logger.info("\nConsolidating Biosample/Bioproject...")
+                biosample_count = biosample.consolidate_biosamples(con, extract_dir, output_dir)
+                bioproject_count = biosample.consolidate_bioprojects(con, extract_dir, output_dir)
+                ebi_count = biosample.consolidate_ebi_biosamples(con, extract_dir, output_dir)
+
+                if biosample_count:
+                    logger.info(f"  biosamples: {biosample_count:,} rows")
+                if bioproject_count:
+                    logger.info(f"  bioprojects: {bioproject_count:,} rows")
+                if ebi_count:
+                    logger.info(f"  ebi_biosamples: {ebi_count:,} rows")
+
+            if source in ['geo', 'all']:
+                logger.info("\nConsolidating GEO...")
+                gse_count = geo.consolidate_gse(con, extract_dir, output_dir)
+                gsm_count = geo.consolidate_gsm(con, extract_dir, output_dir)
+                gpl_count = geo.consolidate_gpl(con, extract_dir, output_dir)
+
+                if gse_count:
+                    logger.info(f"  geo_series: {gse_count:,} rows")
+                if gsm_count:
+                    logger.info(f"  geo_samples: {gsm_count:,} rows")
+                if gpl_count:
+                    logger.info(f"  geo_platforms: {gpl_count:,} rows")
 
         logger.info(f"\n✓ Consolidation complete. Files in: {output_dir}")
 
