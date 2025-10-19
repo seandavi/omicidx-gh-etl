@@ -353,6 +353,10 @@ def get_monthly_ranges(start_date_str: str, end_date_str: str) -> list[tuple]:
 async def main():
     # Get the GSEs with RNA-seq counts
     # updated each run since it is very fast
+    
+    import os
+    print(os.environ)
+    
     gses_with_rna_seq = gse_with_rna_seq_counts()
     with gzip.open(OUTPUT_PATH / "gse_with_rna_seq_counts.jsonl.gz", "wb") as f:
         for item in gses_with_rna_seq:

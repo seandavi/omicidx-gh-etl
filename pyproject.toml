@@ -6,7 +6,7 @@ authors = [
     {name = "Sean Davis", email = "seandavi@gmail.com"},
 ]
 license = {text = "MIT"}
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "universal-pathlib >=0.2.2,<0.3.0",
     "rich >=13.7.1,<14.0.0",

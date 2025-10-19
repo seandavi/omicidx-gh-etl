@@ -72,11 +72,12 @@ def consolidate_entities(con, extract_dir: Path, output_dir: Path) -> dict[str, 
             logger.info(f"Found {file_count} {entity_singular} file(s)")
 
             # Consolidate all chunks into single table
+            # union_by_name=True handles schema variations across chunks
             output_path = output_dir / f"{entity_plural}.parquet"
 
             con.execute(f"""
                 COPY (
-                    SELECT * FROM read_parquet('{pattern}')
+                    SELECT * FROM read_parquet('{pattern}', union_by_name=true)
                 ) TO '{output_path}' (FORMAT PARQUET, COMPRESSION ZSTD)
             """)
 

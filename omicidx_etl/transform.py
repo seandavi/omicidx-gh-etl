@@ -8,6 +8,7 @@ using modular transformation functions organized by domain.
 from pathlib import Path
 from typing import Optional
 import click
+import shutil
 from loguru import logger
 from .db import duckdb_connection
 from .config import settings
@@ -48,61 +49,77 @@ def run_all_transformations(
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Create temp directory for DuckDB (avoids /tmp space issues)
+    temp_dir = extract_dir / "duckdb_temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"DuckDB temp directory: {temp_dir}")
+
     all_results = {}
 
-    with duckdb_connection() as con:
-        # Stage 1: SRA Transformations
-        logger.info("\n" + "=" * 60)
-        logger.info("Stage 1: SRA Consolidation")
-        logger.info("=" * 60)
+    try:
+        with duckdb_connection(temp_directory=str(temp_dir)) as con:
+            # Stage 1: SRA Transformations
+            logger.info("\n" + "=" * 60)
+            logger.info("Stage 1: SRA Consolidation")
+            logger.info("=" * 60)
 
-        try:
-            sra_results = sra.consolidate_entities(con, extract_dir, output_dir)
-            all_results["sra_consolidation"] = sra_results
+            try:
+                sra_results = sra.consolidate_entities(con, extract_dir, output_dir)
+                all_results["sra_consolidation"] = sra_results
 
-            # Create SRA summary if consolidation succeeded
-            if sra_results and any(sra_results.values()):
-                sra_summary_count = sra.create_study_summary(con, output_dir)
-                all_results["sra_study_summary"] = sra_summary_count
-        except Exception as e:
-            logger.error(f"SRA transformations failed: {e}")
-            all_results["sra_consolidation"] = {"error": str(e)}
+                # Create SRA summary if consolidation succeeded
+                if sra_results and any(sra_results.values()):
+                    sra_summary_count = sra.create_study_summary(con, output_dir)
+                    all_results["sra_study_summary"] = sra_summary_count
+            except Exception as e:
+                logger.error(f"SRA transformations failed: {e}")
+                all_results["sra_consolidation"] = {"error": str(e)}
 
-        # Stage 2: Biosample Transformations
-        logger.info("\n" + "=" * 60)
-        logger.info("Stage 2: Biosample/Bioproject Consolidation")
-        logger.info("=" * 60)
+            # Stage 2: Biosample Transformations
+            logger.info("\n" + "=" * 60)
+            logger.info("Stage 2: Biosample/Bioproject Consolidation")
+            logger.info("=" * 60)
 
-        try:
-            biosample_count = biosample.consolidate_biosamples(con, extract_dir, output_dir)
-            all_results["biosamples"] = biosample_count
+            try:
+                biosample_count = biosample.consolidate_biosamples(con, extract_dir, output_dir)
+                all_results["biosamples"] = biosample_count
 
-            bioproject_count = biosample.consolidate_bioprojects(con, extract_dir, output_dir)
-            all_results["bioprojects"] = bioproject_count
+                bioproject_count = biosample.consolidate_bioprojects(con, extract_dir, output_dir)
+                all_results["bioprojects"] = bioproject_count
 
-            ebi_biosample_count = biosample.consolidate_ebi_biosamples(con, extract_dir, output_dir)
-            all_results["ebi_biosamples"] = ebi_biosample_count
-        except Exception as e:
-            logger.error(f"Biosample transformations failed: {e}")
-            all_results["biosample_consolidation"] = {"error": str(e)}
+                ebi_biosample_count = biosample.consolidate_ebi_biosamples(con, extract_dir, output_dir)
+                all_results["ebi_biosamples"] = ebi_biosample_count
+            except Exception as e:
+                logger.error(f"Biosample transformations failed: {e}")
+                all_results["biosample_consolidation"] = {"error": str(e)}
 
-        # Stage 3: GEO Transformations
-        logger.info("\n" + "=" * 60)
-        logger.info("Stage 3: GEO Consolidation")
-        logger.info("=" * 60)
+            # Stage 3: GEO Transformations
+            logger.info("\n" + "=" * 60)
+            logger.info("Stage 3: GEO Consolidation")
+            logger.info("=" * 60)
 
-        try:
-            gse_count = geo.consolidate_gse(con, extract_dir, output_dir)
-            all_results["geo_series"] = gse_count
+            try:
+                gse_count = geo.consolidate_gse(con, extract_dir, output_dir)
+                all_results["geo_series"] = gse_count
 
-            gsm_count = geo.consolidate_gsm(con, extract_dir, output_dir)
-            all_results["geo_samples"] = gsm_count
+                gsm_count = geo.consolidate_gsm(con, extract_dir, output_dir)
+                all_results["geo_samples"] = gsm_count
 
-            gpl_count = geo.consolidate_gpl(con, extract_dir, output_dir)
-            all_results["geo_platforms"] = gpl_count
-        except Exception as e:
-            logger.error(f"GEO transformations failed: {e}")
-            all_results["geo_consolidation"] = {"error": str(e)}
+                gpl_count = geo.consolidate_gpl(con, extract_dir, output_dir)
+                all_results["geo_platforms"] = gpl_count
+            except Exception as e:
+                logger.error(f"GEO transformations failed: {e}")
+                all_results["geo_consolidation"] = {"error": str(e)}
+
+    finally:
+        # Clean up temp directory
+        if temp_dir.exists():
+            logger.info(f"Cleaning up temp directory: {temp_dir}")
+            try:
+                shutil.rmtree(temp_dir)
+                logger.info("✓ Temp directory cleaned up")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temp directory: {e}")
 
     # Summary
     logger.info("\n" + "=" * 60)
@@ -245,10 +262,15 @@ def consolidate(extract_dir: Optional[Path], output_dir: Optional[Path], source:
 
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    # Create temp directory for DuckDB
+    temp_dir = extract_dir / "duckdb_temp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    logger.info(f"DuckDB temp directory: {temp_dir}")
+
     logger.info(f"Consolidating {source} files from {extract_dir}")
 
     try:
-        with duckdb_connection() as con:
+        with duckdb_connection(temp_directory=str(temp_dir)) as con:
             if source in ['sra', 'all']:
                 logger.info("\nConsolidating SRA...")
                 sra_results = sra.consolidate_entities(con, extract_dir, output_dir)
@@ -287,6 +309,15 @@ def consolidate(extract_dir: Optional[Path], output_dir: Optional[Path], source:
     except Exception as e:
         logger.error(f"Consolidation failed: {e}")
         raise click.Abort()
+    finally:
+        # Clean up temp directory
+        if temp_dir.exists():
+            logger.info(f"Cleaning up temp directory: {temp_dir}")
+            try:
+                shutil.rmtree(temp_dir)
+                logger.info("✓ Temp directory cleaned up")
+            except Exception as e:
+                logger.warning(f"Failed to clean up temp directory: {e}")
 
 
 if __name__ == "__main__":
