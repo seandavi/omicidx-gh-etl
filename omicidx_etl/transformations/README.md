@@ -370,6 +370,90 @@ con.execute(f"""
 - Enriched data: `enriched_{entity}.parquet` (e.g., `enriched_samples.parquet`)
 - Cross-dataset joins: `{source1}_{source2}_joined.parquet`
 
+## Operational Concerns
+
+### Schema Variations with union_by_name
+
+When consolidating chunked files that may have schema variations (different columns across chunks), use `union_by_name=True` in DuckDB's `read_parquet()` function:
+
+```python
+con.execute(f"""
+    COPY (
+        SELECT * FROM read_parquet('{pattern}', union_by_name=true)
+    ) TO '{output_path}' (FORMAT PARQUET, COMPRESSION ZSTD)
+""")
+```
+
+**Why this is needed:**
+- SRA data in particular can have schema evolution across time periods
+- Different extraction batches may have different columns
+- `union_by_name=true` handles these variations by:
+  - Aligning columns by name across files
+  - Filling missing columns with NULL values
+  - Allowing consolidation to succeed despite schema differences
+
+**When to use:**
+- SRA entity consolidations (studies, experiments, samples, runs)
+- Any dataset where schema may change over time
+- When consolidating files from different time periods or extraction runs
+
+### DuckDB Temp Directory Management
+
+DuckDB can use significant temporary disk space during large operations. The default `/tmp` directory may fill up, causing failures.
+
+**Solution: Custom temp directory**
+
+The transformation orchestrator (`transform.py`) creates a custom temp directory in the data directory:
+
+```python
+# Create temp directory for DuckDB (avoids /tmp space issues)
+temp_dir = extract_dir / "duckdb_temp"
+temp_dir.mkdir(parents=True, exist_ok=True)
+
+try:
+    with duckdb_connection(temp_directory=str(temp_dir)) as con:
+        # Run transformations
+        pass
+finally:
+    # Clean up temp directory
+    if temp_dir.exists():
+        shutil.rmtree(temp_dir)
+```
+
+**Key points:**
+- Custom temp directory should be on a filesystem with sufficient space
+- The data directory typically has more space than `/tmp`
+- Always clean up temp directory after completion (use try/finally)
+- Monitor disk space if working with very large datasets
+
+**DuckDB configuration:**
+The `duckdb_connection()` context manager accepts a `temp_directory` parameter:
+
+```python
+from omicidx_etl.db import duckdb_connection
+
+temp_dir = Path("/data/tmp")  # Use directory with sufficient space
+temp_dir.mkdir(parents=True, exist_ok=True)
+
+with duckdb_connection(temp_directory=str(temp_dir)) as con:
+    # Your transformation logic
+    pass
+```
+
+### Memory Settings
+
+DuckDB is configured with these memory limits (in `db.py`):
+
+```sql
+SET memory_limit='16GB';
+SET max_temp_directory_size='100GB';
+```
+
+For very large transformations, you may need to:
+- Increase `memory_limit` if you have more RAM available
+- Increase `max_temp_directory_size` and ensure sufficient disk space
+- Process data in smaller batches if hitting limits
+
 ## Questions?
 
 If you're unsure where a transformation should go:
