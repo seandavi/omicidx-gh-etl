@@ -11,7 +11,6 @@ from omicidx_etl.etl.icite import icite
 from omicidx_etl.etl.pubmed import pubmed
 from omicidx_etl.etl.europepmc_textmined import europepmc
 from .nih_reporter import nih_reporter
-from .transform import transform
 from .catalog import catalog
 from .status import status
 
@@ -32,9 +31,6 @@ cli.add_command(icite)
 cli.add_command(pubmed)
 cli.add_command(europepmc)
 cli.add_command(nih_reporter)
-cli.add_command(transform)
-cli.add_command(catalog)
-cli.add_command(status)
 
 if __name__ == "__main__":
     cli()

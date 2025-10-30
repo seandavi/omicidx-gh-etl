@@ -110,8 +110,8 @@ main() {
     run_task "extract_sra" uv run oidx sra extract "$EXTRACT_DIR/sra" \
         || failed_tasks+=("extract_sra")
 
-    run_task "extract_ebi_biosample" uv run oidx ebi-biosample extract --output-dir "$EXTRACT_DIR/ebi_biosample" \
-        || failed_tasks+=("extract_ebi_biosample")
+    #run_task "extract_ebi_biosample" uv run oidx ebi-biosample extract --output-dir "$EXTRACT_DIR/ebi_biosample" \
+    #    || failed_tasks+=("extract_ebi_biosample")
 
     run_task "extract_biosample" uv run oidx biosample extract "$EXTRACT_DIR/biosample" \
         || failed_tasks+=("extract_biosample")
