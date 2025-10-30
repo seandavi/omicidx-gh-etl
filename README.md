@@ -1,5 +1,32 @@
 # omicidx-gh-etl
 
+ETL pipelines and data warehouse for OmicIDX - a comprehensive metadata resource for genomics and transcriptomics data.
+
+## Data Warehouse
+
+This repository includes a DuckDB-based data warehouse that transforms raw ETL outputs into production-ready datasets:
+
+- **3-layer architecture**: raw → staging → mart
+- **Export system**: Automatic parquet export for models
+- **Deployment tools**: Deploy to Cloudflare R2 with catalog and remote database
+- **Zero dependencies**: Pure SQL transformations, no dbt required
+
+### Quick Start
+
+```bash
+# Run warehouse transformations
+uv run oidx warehouse run
+
+# Deploy to R2
+uv run oidx warehouse deploy all
+```
+
+### Documentation
+
+- [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment guide for Cloudflare R2
+- [EXPORT_DEPLOYMENT.md](EXPORT_DEPLOYMENT.md) - Export materialization reference
+- [warehouse.yml.example](warehouse.yml.example) - Configuration template
+
 ## ETL status badges
 
 | Workflow | Description |

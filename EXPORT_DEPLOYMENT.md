@@ -416,11 +416,33 @@ export:
 - ✅ Two new materialization types (export_view, export_table)
 - ✅ Automatic exports during warehouse runs
 - ✅ Configurable per-model via schema.yml
-
-**What's next**:
-- 🔄 Deployment CLI commands
-- 🔄 Catalog generator
-- 🔄 Remote views database creator
-- 🔄 Documentation generator
+- ✅ Deployment CLI commands
+- ✅ Catalog generator
+- ✅ Remote views database creator
+- ✅ R2/S3 upload functionality
 
 **Key benefit**: **Change SQL once, exports update automatically!**
+
+## Deployment
+
+Once you have models with export materializations, you can deploy them to Cloudflare R2:
+
+```bash
+# Generate catalog from schema files
+uv run oidx warehouse deploy catalog
+
+# Create remote views database
+uv run oidx warehouse deploy database
+
+# Upload to R2
+uv run oidx warehouse deploy upload
+
+# Or run all steps at once
+uv run oidx warehouse deploy all
+```
+
+**See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment documentation**, including:
+- R2 configuration
+- Upload tools (rclone/aws-cli)
+- Remote database usage
+- Troubleshooting guide

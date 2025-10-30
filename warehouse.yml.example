@@ -2,13 +2,24 @@
 #
 # Copy this file to warehouse.yml and adjust for your environment
 #
-# Environment variables override these settings:
+# Warehouse environment variables override these settings:
 #   OMICIDX_DB_PATH
 #   OMICIDX_MODELS_DIR
 #   OMICIDX_EXPORT_DIR
 #   OMICIDX_THREADS
 #   OMICIDX_MEMORY_LIMIT
 #   OMICIDX_TEMP_DIR
+#
+# Deployment environment variables:
+#   OMICIDX_R2_ENDPOINT_URL
+#   OMICIDX_R2_ACCESS_KEY_ID
+#   OMICIDX_R2_SECRET_ACCESS_KEY
+#   OMICIDX_R2_BUCKET_NAME
+#   OMICIDX_R2_REGION
+#   OMICIDX_R2_DATA_PREFIX
+#   OMICIDX_R2_CATALOG_PATH
+#   OMICIDX_R2_DATABASE_PATH
+#   OMICIDX_PUBLIC_URL
 
 warehouse:
   # Path to DuckDB warehouse database
@@ -31,3 +42,34 @@ warehouse:
   # Optional: Temporary directory for DuckDB operations
   # Useful for large operations that need scratch space
   # temp_directory: /tmp/duckdb
+
+# Deployment configuration for Cloudflare R2 or S3-compatible storage
+# Comment out this section if you're not deploying to cloud storage
+deployment:
+  # R2/S3 endpoint URL (for Cloudflare R2, use account-specific endpoint)
+  # Example: https://<account_id>.r2.cloudflarestorage.com
+  endpoint_url: https://your-account-id.r2.cloudflarestorage.com
+
+  # R2/S3 credentials (can also use environment variables)
+  # For R2: Generate API tokens in Cloudflare dashboard
+  access_key_id: your-access-key-id
+  secret_access_key: your-secret-access-key
+
+  # Bucket name
+  bucket_name: omicidx-data
+
+  # Region (for R2, use 'auto')
+  region: auto
+
+  # Prefix for data files in bucket
+  data_prefix: data
+
+  # Path to catalog.json in bucket
+  catalog_path: catalog.json
+
+  # Path to remote views database in bucket
+  database_path: omicidx.duckdb
+
+  # Optional: Public CDN URL for accessing data
+  # This will be used in catalog URLs
+  # public_url: https://data.omicidx.org
