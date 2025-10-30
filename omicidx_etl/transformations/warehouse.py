@@ -24,9 +24,21 @@ class WarehouseConfig:
     """Configuration for the data warehouse."""
     db_path: str = 'omicidx_warehouse.duckdb'
     models_dir: str = 'omicidx_etl/transformations/models'
+    export_dir: str = 'exports'
     threads: int = 16
     memory_limit: str = '32GB'
     temp_directory: Optional[str] = None
+
+
+@dataclass
+class ExportConfig:
+    """Configuration for model exports."""
+    enabled: bool = False
+    path: Optional[str] = None  # Relative path in export directory
+    format: str = 'parquet'
+    compression: str = 'zstd'
+    partition_by: Optional[List[str]] = None
+    row_group_size: int = 100000
 
 
 @dataclass
@@ -35,16 +47,22 @@ class ModelConfig:
     name: str
     layer: str  # 'raw', 'staging', or 'mart'
     sql_path: Path
-    materialization: str = 'view'  # 'view', 'table', or 'external_table'
+    materialization: str = 'view'  # 'view', 'table', 'export_table', 'export_view'
     depends_on: List[str] = field(default_factory=list)
     description: Optional[str] = None
     columns: Dict[str, str] = field(default_factory=dict)  # column_name -> description
     tags: List[str] = field(default_factory=list)
+    export: ExportConfig = field(default_factory=ExportConfig)
 
     @property
     def full_name(self) -> str:
         """Fully qualified name: layer.name"""
         return f"{self.layer}.{self.name}"
+
+    @property
+    def should_export(self) -> bool:
+        """Check if this model should be exported."""
+        return self.export.enabled or self.materialization in ('export_table', 'export_view')
 
 
 class WarehouseConnection:
@@ -171,7 +189,8 @@ def discover_models(models_dir: str) -> List[ModelConfig]:
                 columns=metadata.get('columns', {}),
                 tags=metadata.get('tags', []),
                 depends_on=metadata.get('depends_on', []),
-                materialization=metadata.get('materialization', 'view')
+                materialization=metadata.get('materialization', 'view'),
+                export=metadata.get('export', ExportConfig())
             )
 
             models.append(model)
@@ -201,6 +220,18 @@ def _parse_schema_yml(schema_path: Path, model_name: str) -> Dict[str, Any]:
                 # Extract column descriptions
                 for col in model.get('columns', []):
                     metadata['columns'][col['name']] = col.get('description', '')
+
+                # Extract export configuration
+                export_config = model.get('export', {})
+                if export_config:
+                    metadata['export'] = ExportConfig(
+                        enabled=export_config.get('enabled', False),
+                        path=export_config.get('path'),
+                        format=export_config.get('format', 'parquet'),
+                        compression=export_config.get('compression', 'zstd'),
+                        partition_by=export_config.get('partition_by'),
+                        row_group_size=export_config.get('row_group_size', 100000)
+                    )
 
                 return metadata
 
@@ -257,9 +288,61 @@ def topological_sort(models: List[ModelConfig]) -> List[ModelConfig]:
     return result
 
 
+def _export_model(
+    conn: duckdb.DuckDBPyConnection,
+    model: ModelConfig,
+    config: WarehouseConfig
+) -> Optional[str]:
+    """
+    Export a model to parquet file.
+
+    Args:
+        conn: DuckDB connection
+        model: Model configuration
+        config: Warehouse configuration
+
+    Returns:
+        Export path if successful, None otherwise
+    """
+    if not model.should_export:
+        return None
+
+    # Determine export path
+    if model.export.path:
+        export_path = Path(config.export_dir) / model.export.path
+    else:
+        # Default: layer/model_name.parquet
+        export_path = Path(config.export_dir) / model.layer / f"{model.name}.parquet"
+
+    # Create export directory
+    export_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Build COPY statement
+    partition_clause = ""
+    if model.export.partition_by:
+        partition_clause = f", PARTITION_BY ({', '.join(model.export.partition_by)})"
+
+    copy_sql = f"""
+    COPY {model.layer}.{model.name}
+    TO '{export_path}' (
+        FORMAT {model.export.format},
+        COMPRESSION {model.export.compression},
+        ROW_GROUP_SIZE {model.export.row_group_size}
+        {partition_clause}
+    )
+    """
+
+    logger.info(f"Exporting {model.full_name} to {export_path}")
+    conn.execute(copy_sql)
+    logger.success(f"Exported to: {export_path}")
+
+    return str(export_path)
+
+
 def execute_model(
     conn: duckdb.DuckDBPyConnection,
     model: ModelConfig,
+    config: WarehouseConfig,
     dry_run: bool = False
 ) -> Dict[str, Any]:
     """
@@ -268,6 +351,7 @@ def execute_model(
     Args:
         conn: DuckDB connection
         model: Model configuration
+        config: Warehouse configuration
         dry_run: If True, only parse SQL without executing
 
     Returns:
@@ -300,6 +384,8 @@ def execute_model(
         """, [run_id, model.name, model.layer, started_at, sql_hash])
 
         # Execute based on materialization type
+        export_path = None
+
         if model.materialization == 'view':
             full_sql = f"CREATE OR REPLACE VIEW {model.layer}.{model.name} AS\n{sql}"
             conn.execute(full_sql)
@@ -309,6 +395,20 @@ def execute_model(
             full_sql = f"CREATE OR REPLACE TABLE {model.layer}.{model.name} AS\n{sql}"
             result = conn.execute(full_sql)
             rows_affected = result.fetchone()[0] if result else None
+
+        elif model.materialization == 'export_view':
+            # Create view AND export it
+            full_sql = f"CREATE OR REPLACE VIEW {model.layer}.{model.name} AS\n{sql}"
+            conn.execute(full_sql)
+            rows_affected = None
+            export_path = _export_model(conn, model, config)
+
+        elif model.materialization == 'export_table':
+            # Create table AND export it
+            full_sql = f"CREATE OR REPLACE TABLE {model.layer}.{model.name} AS\n{sql}"
+            result = conn.execute(full_sql)
+            rows_affected = result.fetchone()[0] if result else None
+            export_path = _export_model(conn, model, config)
 
         elif model.materialization == 'external_table':
             # For external tables, SQL should be a COPY statement or similar
@@ -331,14 +431,18 @@ def execute_model(
             WHERE run_id = ?
         """, [completed_at, rows_affected, execution_time, run_id])
 
-        logger.success(f"Model {model.full_name} completed in {execution_time:.2f}s")
+        if export_path:
+            logger.success(f"Model {model.full_name} completed in {execution_time:.2f}s (exported to {export_path})")
+        else:
+            logger.success(f"Model {model.full_name} completed in {execution_time:.2f}s")
 
         return {
             'run_id': run_id,
             'model_name': model.full_name,
             'status': 'success',
             'execution_time_seconds': execution_time,
-            'rows_affected': rows_affected
+            'rows_affected': rows_affected,
+            'export_path': export_path
         }
 
     except Exception as e:
@@ -441,7 +545,7 @@ def run_warehouse(
 
         # Run each model
         for model in sorted_models:
-            result = execute_model(conn, model, dry_run=dry_run)
+            result = execute_model(conn, model, config, dry_run=dry_run)
             results.append(result)
 
             # Stop on error if fail_fast

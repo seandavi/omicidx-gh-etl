@@ -19,7 +19,12 @@ models:
       **Refresh frequency:** Updated when staging models are refreshed
 
       **Data quality:** Only includes records with complete metadata
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "marts/sra_metadata.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - staging.stg_sra_studies
       - staging.stg_sra_experiments
