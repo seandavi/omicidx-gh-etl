@@ -10,7 +10,7 @@ models:
     materialized: export_view
     export:
       enabled: true
-      path: "marts/stg_sra_studies.parquet"
+      path: "staging/stg_sra_studies.parquet"
       compression: zstd
       row_group_size: 100000
     depends_on:
@@ -54,7 +54,7 @@ models:
     materialized: export_view
     export:
       enabled: true
-      path: "marts/stg_sra_experiments.parquet"
+      path: "staging/stg_sra_experiments.parquet"
       compression: zstd
       row_group_size: 100000
     depends_on:
@@ -98,7 +98,7 @@ models:
     materialized: export_view
     export:
       enabled: true
-      path: "marts/stg_sra_runs.parquet"
+      path: "staging/stg_sra_runs.parquet"
       compression: zstd
       row_group_size: 100000
     depends_on:
@@ -146,7 +146,7 @@ models:
     materialized: export_view
     export:
       enabled: true
-      path: "marts/stg_sra_samples.parquet"
+      path: "staging/stg_sra_samples.parquet"
       compression: zstd
       row_group_size: 100000
     depends_on:
@@ -210,7 +210,7 @@ models:
     materialized: export_view
     export:
       enabled: true
-      path: "marts/stg_sra_accessions.parquet"
+      path: "staging/stg_sra_accessions.parquet"
       compression: zstd
       row_group_size: 100000
     depends_on:
@@ -287,7 +287,12 @@ models:
       - Understanding microarray/sequencing platform details
       - Linking platforms to samples and series
       - Platform technology and manufacturer analysis
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_geo_platforms.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.geo_platforms
     tags:
@@ -354,7 +359,12 @@ models:
       - Sample-level metadata and characteristics
       - Linking samples to platforms, series, and SRA
       - Protocol and processing information
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_geo_samples.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.geo_samples
     tags:
@@ -435,7 +445,12 @@ models:
       - Study-level metadata and design
       - Linking series to samples, platforms, BioProjects, and SRA
       - Publication and organism information
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_geo_series.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.geo_series
     tags:
@@ -517,7 +532,12 @@ models:
       - Linking BioSamples to SRA, GEO, and dbGaP
       - Taxonomy and organism information
       - Sample model and attribute harmonization
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_ncbi_biosamples.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.ncbi_biosamples
     tags:
@@ -563,5 +583,54 @@ models:
         description: Array of sample attributes (nested STRUCT with harmonized names)
       - name: attributes
         description: Array of attribute strings
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_ncbi_bioprojects
+    description: |
+      Cleaned and standardized NCBI BioProject metadata.
+
+      **Transformations applied**:
+      - Converts release_date to DATE
+      - Preserves nested structures (publications, external_links, locus_tags)
+      - Adds data quality flags and audit timestamp
+
+      **Use cases**:
+      - Linking studies/series to BioProjects
+      - Understanding project-level scope and release timing
+      - Navigating external links and publication references
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_ncbi_bioprojects.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.ncbi_bioprojects
+    tags:
+      - staging
+      - bioproject
+      - ncbi
+    columns:
+      - name: accession
+        description: BioProject accession identifier (PRJNA/PRJEB/PRJDB)
+      - name: name
+        description: Short project name/label
+      - name: title
+        description: Project title
+      - name: description
+        description: Project description/abstract
+      - name: release_date
+        description: Project release date (converted to DATE)
+      - name: data_types
+        description: Array of data types associated with the project
+      - name: publications
+        description: Publications associated with the project (STRUCT array)
+      - name: external_links
+        description: External links (STRUCT array with category/label/url)
+      - name: locus_tags
+        description: Locus tag info (STRUCT with assembly and biosample context)
+      - name: has_core_metadata
+        description: Data quality flag - TRUE if accession and (title or name) are present
       - name: _loaded_at
         description: Timestamp when record was loaded into warehouse
