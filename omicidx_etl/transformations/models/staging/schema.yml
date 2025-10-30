@@ -171,3 +171,295 @@ models:
         description: First 3 characters of accession (SRA/ERA/DRA for archive grouping)
       - name: _loaded_at
         description: Timestamp when record was loaded into warehouse
+
+  - name: stg_geo_platforms
+    description: |
+      Cleaned and standardized GEO platform (GPL) metadata.
+
+      **Transformations applied**:
+      - Flattens contact STRUCT into separate columns
+      - Preserves array columns for samples and series
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Understanding microarray/sequencing platform details
+      - Linking platforms to samples and series
+      - Platform technology and manufacturer analysis
+    materialized: view
+    depends_on:
+      - raw.geo_platforms
+    tags:
+      - staging
+      - geo
+      - gpl
+      - platforms
+    columns:
+      - name: accession
+        description: Unique GEO platform accession (GPL)
+      - name: title
+        description: Platform title
+      - name: status
+        description: Platform status (Public, etc.)
+      - name: submission_date
+        description: Date platform was submitted
+      - name: last_update_date
+        description: Date of last update
+      - name: organism
+        description: Primary organism for platform
+      - name: technology
+        description: Platform technology type (e.g., spotted DNA/cDNA, in situ oligonucleotide)
+      - name: manufacturer
+        description: Platform manufacturer(s)
+      - name: distribution
+        description: Distribution type (commercial, non-commercial, custom)
+      - name: data_row_count
+        description: Number of data rows/features on platform
+      - name: description
+        description: Detailed platform description
+      - name: manufacture_protocol
+        description: Manufacturing protocol details
+      - name: contact_first_name
+        description: Contact person first name
+      - name: contact_last_name
+        description: Contact person last name
+      - name: contact_email
+        description: Contact email address
+      - name: contact_institute
+        description: Contact institution
+      - name: contact_country
+        description: Contact country
+      - name: sample_id
+        description: Array of sample accessions (GSM) using this platform
+      - name: series_id
+        description: Array of series accessions (GSE) using this platform
+      - name: relation
+        description: Array of related entities
+      - name: summary
+        description: Platform summary (JSON)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_geo_samples
+    description: |
+      Cleaned and standardized GEO sample (GSM) metadata.
+
+      **Transformations applied**:
+      - Flattens contact STRUCT into separate columns
+      - Preserves complex nested structures (channels, contributors)
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Sample-level metadata and characteristics
+      - Linking samples to platforms, series, and SRA
+      - Protocol and processing information
+    materialized: view
+    depends_on:
+      - raw.geo_samples
+    tags:
+      - staging
+      - geo
+      - gsm
+      - samples
+    columns:
+      - name: accession
+        description: Unique GEO sample accession (GSM)
+      - name: title
+        description: Sample title
+      - name: status
+        description: Sample status
+      - name: type
+        description: Sample type (RNA, genomic, etc.)
+      - name: submission_date
+        description: Date sample was submitted
+      - name: last_update_date
+        description: Date of last update
+      - name: biosample
+        description: Associated NCBI BioSample accession
+      - name: platform_id
+        description: Platform accession (GPL) used for this sample
+      - name: sra_experiment
+        description: Associated SRA experiment accession (SRX)
+      - name: description
+        description: Sample description
+      - name: anchor
+        description: Anchor type
+      - name: channel_count
+        description: Number of channels
+      - name: tag_count
+        description: Number of tags
+      - name: tag_length
+        description: Average tag length
+      - name: data_row_count
+        description: Number of data rows
+      - name: library_source
+        description: Library source material
+      - name: hyb_protocol
+        description: Hybridization protocol
+      - name: scan_protocol
+        description: Scanning protocol
+      - name: data_processing
+        description: Data processing description
+      - name: contact_first_name
+        description: Contact person first name
+      - name: contact_last_name
+        description: Contact person last name
+      - name: contact_email
+        description: Contact email address
+      - name: contact_institute
+        description: Contact institution
+      - name: contact_country
+        description: Contact country
+      - name: supplemental_files
+        description: Array of supplemental file URLs
+      - name: channels
+        description: Channel information (nested STRUCT)
+      - name: overall_design
+        description: Overall experimental design (JSON)
+      - name: contributor
+        description: Contributors (JSON array)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_geo_series
+    description: |
+      Cleaned and standardized GEO series (GSE) metadata.
+
+      **Transformations applied**:
+      - Flattens contact STRUCT into separate columns
+      - Preserves array columns for cross-references
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Study-level metadata and design
+      - Linking series to samples, platforms, BioProjects, and SRA
+      - Publication and organism information
+    materialized: view
+    depends_on:
+      - raw.geo_series
+    tags:
+      - staging
+      - geo
+      - gse
+      - series
+    columns:
+      - name: accession
+        description: Unique GEO series accession (GSE)
+      - name: title
+        description: Series title
+      - name: status
+        description: Series status
+      - name: submission_date
+        description: Date series was submitted
+      - name: last_update_date
+        description: Date of last update
+      - name: summary
+        description: Series summary/description
+      - name: overall_design
+        description: Overall experimental design
+      - name: contact_first_name
+        description: Contact person first name
+      - name: contact_last_name
+        description: Contact person last name
+      - name: contact_email
+        description: Contact email address
+      - name: contact_institute
+        description: Contact institution
+      - name: contact_country
+        description: Contact country
+      - name: subseries
+        description: Array of subseries accessions
+      - name: bioprojects
+        description: Array of associated BioProject accessions
+      - name: sra_studies
+        description: Array of associated SRA study accessions
+      - name: pubmed_id
+        description: Array of associated PubMed IDs
+      - name: sample_id
+        description: Array of sample accessions (GSM) in this series
+      - name: platform_id
+        description: Array of platform accessions (GPL) used in this series
+      - name: relation
+        description: Array of related entities
+      - name: sample_taxid
+        description: Array of sample taxonomy IDs
+      - name: sample_organism
+        description: Array of sample organism names
+      - name: platform_taxid
+        description: Array of platform taxonomy IDs
+      - name: platform_organism
+        description: Array of platform organism names
+      - name: type
+        description: Array of experiment types
+      - name: supplemental_files
+        description: Array of supplemental file URLs
+      - name: data_processing
+        description: Data processing details (JSON)
+      - name: description
+        description: Detailed description (JSON)
+      - name: contributor
+        description: Contributors (nested STRUCT array)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_ncbi_biosamples
+    description: |
+      Cleaned and standardized NCBI BioSample metadata.
+
+      **Transformations applied**:
+      - Converts date strings to proper DATE types
+      - Preserves attribute structures for downstream processing
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Sample attribute and characteristic analysis
+      - Linking BioSamples to SRA, GEO, and dbGaP
+      - Taxonomy and organism information
+      - Sample model and attribute harmonization
+    materialized: view
+    depends_on:
+      - raw.ncbi_biosamples
+    tags:
+      - staging
+      - biosample
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique BioSample accession (SAMN/SAMEA/SAMD)
+      - name: id
+        description: Internal BioSample ID
+      - name: title
+        description: Sample title
+      - name: description
+        description: Sample description
+      - name: sra_sample
+        description: Associated SRA sample accession
+      - name: dbgap
+        description: Associated dbGaP study accession
+      - name: gsm
+        description: Associated GEO sample accession (GSM)
+      - name: taxonomy_name
+        description: Organism taxonomy name
+      - name: taxon_id
+        description: NCBI taxonomy ID
+      - name: access
+        description: Access level (public, controlled)
+      - name: is_reference
+        description: Whether this is a reference sample
+      - name: submission_date
+        description: Date sample was submitted (converted to DATE)
+      - name: last_update
+        description: Date of last update (converted to DATE)
+      - name: publication_date
+        description: Date sample was published (converted to DATE)
+      - name: model
+        description: BioSample data model used
+      - name: id_recs
+        description: Array of ID records (nested STRUCT)
+      - name: ids
+        description: Array of associated IDs
+      - name: attribute_recs
+        description: Array of sample attributes (nested STRUCT with harmonized names)
+      - name: attributes
+        description: Array of attribute strings
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse

@@ -6,7 +6,12 @@ models:
       Raw SRA study metadata directly from parquet files.
       This is the entry point from ETL pipeline to warehouse.
       No transformations applied - just consolidation of source files.
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_studies.parquet
+      compression: zstd
+      row_group_size: 100000
     tags:
       - raw
       - sra
@@ -31,7 +36,12 @@ models:
     description: |
       Raw SRA experiment metadata from parquet files.
       Contains library construction, sequencing platform, and protocol details.
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_experiments.parquet
+      compression: zstd
+      row_group_size: 100000
     tags:
       - raw
       - sra
@@ -58,7 +68,12 @@ models:
     description: |
       Raw SRA sample metadata from parquet files.
       Contains organism information and sample attributes.
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_samples.parquet
+      compression: zstd
+      row_group_size: 100000
     tags:
       - raw
       - sra
@@ -79,7 +94,12 @@ models:
     description: |
       Raw SRA run metadata from parquet files.
       Contains sequencing run details and file information.
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_runs.parquet
+      compression: zstd
+      row_group_size: 100000
     tags:
       - raw
       - sra
@@ -96,7 +116,12 @@ models:
     description: |
       Raw NCBI BioSample metadata from parquet files.
       Contains detailed sample attributes and characteristics.
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/ncbi_biosamples.parquet
+      compression: zstd
+      row_group_size: 100000
     tags:
       - raw
       - biosample
@@ -171,3 +196,43 @@ models:
         description: Associated BioProject accession
       - name: ReplacedBy
         description: If this accession was replaced, the new accession that supersedes it
+
+
+  - name: geo_platforms
+    description: |
+      Raw GEO platform (GPL) metadata from NDJSON files.
+      Contains information about microarray and sequencing platforms used in GEO studies.
+    materialized: view
+    tags:
+      - raw
+      - geo
+      - gpl
+    columns:
+      - name: accession
+        description: Unique GEO platform accession (GPL)
+
+  - name: geo_samples
+    description: |
+      Raw GEO sample (GSM) metadata from NDJSON files.
+      Contains detailed information about individual samples in GEO studies.
+    materialized: view
+    tags:
+      - raw
+      - geo
+      - gsm
+    columns:
+      - name: accession
+        description: Unique GEO sample accession (GSM)
+
+  - name: geo_series
+    description: |
+      Raw GEO series (GSE) metadata from NDJSON files.
+      Contains information about GEO studies and their associated samples and platforms.
+    materialized: view
+    tags:
+      - raw
+      - geo
+      - gse
+    columns:
+      - name: accession
+        description: Unique GEO series accession (GSE)
