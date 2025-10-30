@@ -108,3 +108,66 @@ models:
         description: Source organism
       - name: attribute_recs
         description: Array of sample attributes (key-value pairs)
+
+  - name: sra_accessions
+    description: |
+      Comprehensive index of all SRA accessions across all entity types.
+      This table provides a unified view of submissions, studies, experiments,
+      samples, and runs with their status, timestamps, and cross-references.
+
+      **Entity Types**: SUBMISSION, STUDY, EXPERIMENT, SAMPLE, RUN
+      **Use Cases**:
+      - Finding all accessions for a given submission
+      - Tracking accession status and updates
+      - Linking between different entity types
+      - Identifying replaced/superseded accessions
+
+      **Note**: Materialized as table (not view) since source is HTTPS/FTP.
+      Data is loaded once and cached locally for fast querying.
+    materialized: table
+    tags:
+      - raw
+      - sra
+      - ncbi
+      - index
+    columns:
+      - name: Accession
+        description: Primary accession identifier (varies by Type - DRA/SRA/ERA/ERP/SRP/DRX/SRX/ERX/DRS/SRS/ERS/DRR/SRR/ERR)
+      - name: Submission
+        description: Submission accession this entity belongs to
+      - name: Status
+        description: Current status of the accession (live, suppressed, withdrawn, etc.)
+      - name: Updated
+        description: Timestamp of last update (ISO 8601 format with timezone)
+      - name: Published
+        description: Timestamp when accession was first published (ISO 8601 format)
+      - name: Received
+        description: Timestamp when data was first received (ISO 8601 format)
+      - name: Type
+        description: Entity type (SUBMISSION, STUDY, EXPERIMENT, SAMPLE, RUN)
+      - name: Center
+        description: Submitting center name (e.g., KEIO, BioSample)
+      - name: Visibility
+        description: Data visibility status (public, controlled-access, etc.)
+      - name: Alias
+        description: Submitter-provided alias/identifier
+      - name: Experiment
+        description: Associated experiment accession (for RUNs)
+      - name: Sample
+        description: Associated sample accession (for EXPERIMENTs)
+      - name: Study
+        description: Associated study accession (for EXPERIMENTs and RUNs)
+      - name: Loaded
+        description: Load status indicator (populated for RUNs)
+      - name: Spots
+        description: Number of spots/reads (for RUNs)
+      - name: Bases
+        description: Total number of bases sequenced (for RUNs)
+      - name: Md5sum
+        description: MD5 checksum of the entity metadata
+      - name: BioSample
+        description: Associated BioSample accession
+      - name: BioProject
+        description: Associated BioProject accession
+      - name: ReplacedBy
+        description: If this accession was replaced, the new accession that supersedes it
