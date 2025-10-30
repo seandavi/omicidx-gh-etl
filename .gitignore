@@ -2,3 +2,11 @@ __pycache__
 .envrc
 .env
 .envrc
+
+# Warehouse configuration with credentials
+warehouse.yml
+
+# Warehouse data files
+omicidx_warehouse.duckdb
+omicidx_warehouse.duckdb.wal
+exports/

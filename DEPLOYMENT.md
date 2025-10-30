@@ -49,9 +49,40 @@ deployment:
   catalog_path: catalog.json  # Catalog location
   database_path: omicidx.duckdb
 
-  # Optional: Public CDN URL
-  public_url: https://data.yourdomain.com
+  # Public URL - IMPORTANT: Use Cloudflare Worker URL, not R2 direct URL
+  # This URL will be used in catalog and remote database views
+  # Example: If you have a Cloudflare Worker at https://store.yourdomain.com
+  # that mirrors your R2 bucket, use that URL here
+  public_url: https://store.yourdomain.com
 ```
+
+**Why `public_url` Matters**: The remote views database uses this URL to access parquet files. If you have a Cloudflare Worker that mirrors your R2 bucket (providing public HTTPS access), specify that URL here. The views will then use URLs like `https://store.yourdomain.com/data/table.parquet` instead of R2 storage URLs.
+
+**Example with Cloudflare Worker**:
+```yaml
+deployment:
+  # Upload happens to R2 using these credentials
+  endpoint_url: https://xxxxx.r2.cloudflarestorage.com
+  bucket_name: u24-cancer-genomics
+
+  # But views use the public Worker URL
+  public_url: https://store.cancerdatasci.org
+  data_prefix: omicidx/data
+```
+
+This creates views like:
+```sql
+CREATE VIEW mart.sra_metadata AS
+SELECT * FROM read_parquet('https://store.cancerdatasci.org/omicidx/data/marts/sra_metadata.parquet');
+```
+
+Users can then query the remote data without needing R2 credentials:
+```bash
+duckdb omicidx.duckdb -c "SELECT COUNT(*) FROM mart.sra_metadata"
+# Reads from https://store.cancerdatasci.org/ (public Worker URL)
+```
+
+
 
 ### 2. Environment Variable Overrides
 
