@@ -10,3 +10,4 @@ warehouse.yml
 omicidx_warehouse.duckdb
 omicidx_warehouse.duckdb.wal
 exports/
+*.duckdb
