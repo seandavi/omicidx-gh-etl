@@ -89,6 +89,108 @@ models:
       - name: _loaded_at
         description: Timestamp when record was loaded into warehouse
 
+  - name: stg_sra_runs
+    description: |
+      Cleaned and enriched SRA runs.
+      - Standardized run metadata
+      - Parsed run dates
+      - Quality flags for completeness
+    materialized: export_view
+    export:
+      enabled: true
+      path: "marts/stg_sra_runs.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_runs
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA run accession
+      - name: experiment_accession
+        description: Parent experiment accession
+      - name: title
+        description: Run title
+      - name: run_center
+        description: Center that performed the sequencing run
+      - name: run_date
+        description: Date when sequencing run was performed (standardized to TIMESTAMP)
+      - name: center_name
+        description: Submitting center name
+      - name: broker_name
+        description: Broker organization name
+      - name: alias
+        description: Submitter-provided alias
+      - name: GEO
+        description: Associated GEO accession
+      - name: identifiers
+        description: Additional identifiers (STRUCT)
+      - name: attributes
+        description: Run attributes (STRUCT array)
+      - name: qualities
+        description: Quality score arrays
+      - name: has_complete_run_info
+        description: Data quality flag - true if essential run metadata is present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_samples
+    description: |
+      Cleaned and enriched SRA samples.
+      - Standardized organism metadata
+      - Validated taxonomy information
+      - Quality flags for completeness
+    materialized: export_view
+    export:
+      enabled: true
+      path: "marts/stg_sra_samples.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_samples
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA sample accession
+      - name: sample_accession
+        description: Sample accession identifier
+      - name: title
+        description: Sample title
+      - name: description
+        description: Sample description
+      - name: organism
+        description: Source organism name
+      - name: taxon_id
+        description: NCBI taxonomy ID
+      - name: BioSample
+        description: Associated BioSample accession
+      - name: center_name
+        description: Submitting center name
+      - name: broker_name
+        description: Broker organization name
+      - name: alias
+        description: Submitter-provided alias
+      - name: GEO
+        description: Associated GEO accession
+      - name: identifiers
+        description: Additional identifiers (STRUCT)
+      - name: attributes
+        description: Sample attributes (STRUCT array)
+      - name: xrefs
+        description: Cross-references to other databases (STRUCT array)
+      - name: has_complete_organism_info
+        description: Data quality flag - true if organism and taxon_id are present
+      - name: has_biosample_link
+        description: Data quality flag - true if linked to a BioSample
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
   - name: stg_sra_accessions
     description: |
       Cleaned and standardized SRA accessions index.
