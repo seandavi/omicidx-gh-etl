@@ -236,3 +236,16 @@ models:
     columns:
       - name: accession
         description: Unique GEO series accession (GSE)
+
+  - name: ncbi_bioprojects
+    description: |
+      Raw NCBI BioProject metadata from parquet files.
+      Contains high-level project information linking multiple BioSamples and SRA studies.
+    materialized: view
+    tags:
+      - raw
+      - bioproject
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique BioProject accession (PRJNA/PRJEB/PRJD)
