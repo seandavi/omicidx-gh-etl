@@ -1,0 +1,8 @@
+# OmicIDX Warehouse Configuration
+
+warehouse:
+  db_path: omicidx_warehouse.duckdb
+  models_dir: omicidx_etl/transformations/models
+  export_dir: /data/davsean/omicidx_root/exports
+  threads: 16
+  memory_limit: 32GB

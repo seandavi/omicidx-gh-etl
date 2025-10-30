@@ -7,7 +7,12 @@ models:
       - Standardized date formats
       - Data quality flags added
       - Audit timestamps
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "marts/stg_sra_studies.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.sra_studies
     tags:
@@ -46,7 +51,12 @@ models:
       - Standardized library metadata
       - Platform categorization
       - Quality flags for completeness
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "marts/stg_sra_experiments.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.sra_experiments
     tags:
@@ -95,7 +105,12 @@ models:
       - Identifying replaced/superseded accessions
       - Tracking update frequency and data freshness
       - Grouping by archive (SRA/ENA/DDBJ via prefix)
-    materialized: view
+    materialized: export_view
+    export:
+      enabled: true
+      path: "marts/stg_sra_accessions.parquet"
+      compression: zstd
+      row_group_size: 100000
     depends_on:
       - raw.sra_accessions
     tags:

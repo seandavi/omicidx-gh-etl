@@ -6,42 +6,42 @@
 
 SELECT
     -- Primary identifiers
-    Accession,
-    Submission,
-    Type,
+    Accession as accession,
+    Submission as submission,
+    Type as type,
 
     -- Status and visibility
-    Status,
-    Visibility,
+    Status as status,
+    Visibility as visibility,
 
     -- Timestamps (already in proper timestamp format from CSV parsing)
-    Updated,
-    Published,
-    Received,
+    Updated as updated_at,
+    Published as published_at,
+    Received as received_at,
 
     -- Submitter information
-    Center,
-    Alias,
+    Center as center,
+    Alias as alias,
 
     -- Cross-references (convert '-' to NULL for cleaner data)
-    NULLIF(Experiment, '-') AS Experiment,
-    NULLIF(Sample, '-') AS Sample,
-    NULLIF(Study, '-') AS Study,
-    NULLIF(BioSample, '-') AS BioSample,
-    NULLIF(BioProject, '-') AS BioProject,
-    NULLIF(ReplacedBy, '-') AS ReplacedBy,
+    NULLIF(Experiment, '-') AS experiment,
+    NULLIF(Sample, '-') AS sample,
+    NULLIF(Study, '-') AS study,
+    NULLIF(BioSample, '-') AS biosample,
+    NULLIF(BioProject, '-') AS bioproject,
+    NULLIF(ReplacedBy, '-') AS replacedby,
 
     -- Run-specific metrics (convert '-' to NULL)
-    CASE WHEN Loaded = '-' THEN NULL ELSE CAST(Loaded AS BIGINT) END AS Loaded,
-    CASE WHEN Spots = '-' THEN NULL ELSE CAST(Spots AS BIGINT) END AS Spots,
-    CASE WHEN Bases = '-' THEN NULL ELSE CAST(Bases AS BIGINT) END AS Bases,
+    CAST(Loaded AS BIGINT) AS loaded,
+    CAST(Spots AS BIGINT) AS spots,
+    CAST(Bases AS BIGINT) AS bases,
 
     -- Metadata
-    Md5sum,
+    Md5sum as md5sum,
 
     -- Data quality flags
     CASE
-        WHEN Status = 'live' AND Visibility = 'public' THEN TRUE
+        WHEN status = 'live' AND visibility = 'public' THEN TRUE
         ELSE FALSE
     END AS is_public_live,
 
@@ -51,7 +51,7 @@ SELECT
     END AS is_replaced,
 
     CASE
-        WHEN Type = 'RUN' AND Spots IS NOT NULL AND Spots != '-' THEN TRUE
+        WHEN Type = 'RUN' AND Spots IS NOT NULL THEN TRUE
         WHEN Type != 'RUN' THEN TRUE
         ELSE FALSE
     END AS has_complete_metrics,

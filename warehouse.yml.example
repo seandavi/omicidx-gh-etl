@@ -1,0 +1,33 @@
+# OmicIDX Warehouse Configuration
+#
+# Copy this file to warehouse.yml and adjust for your environment
+#
+# Environment variables override these settings:
+#   OMICIDX_DB_PATH
+#   OMICIDX_MODELS_DIR
+#   OMICIDX_EXPORT_DIR
+#   OMICIDX_THREADS
+#   OMICIDX_MEMORY_LIMIT
+#   OMICIDX_TEMP_DIR
+
+warehouse:
+  # Path to DuckDB warehouse database
+  db_path: omicidx_warehouse.duckdb
+
+  # Directory containing model SQL files
+  models_dir: omicidx_etl/transformations/models
+
+  # Base directory for parquet exports
+  # Models with export_view/export_table will write here
+  export_dir: exports
+
+  # Number of threads for DuckDB to use
+  threads: 16
+
+  # Memory limit for DuckDB
+  # Examples: 8GB, 16GB, 32GB
+  memory_limit: 32GB
+
+  # Optional: Temporary directory for DuckDB operations
+  # Useful for large operations that need scratch space
+  # temp_directory: /tmp/duckdb

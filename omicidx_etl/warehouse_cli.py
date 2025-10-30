@@ -13,6 +13,7 @@ from omicidx_etl.transformations.warehouse import (
     run_warehouse,
     discover_models
 )
+from omicidx_etl.transformations.config import load_config, print_config
 
 
 @click.group()
@@ -23,14 +24,21 @@ def warehouse():
 
 @warehouse.command()
 @click.option(
-    '--db-path',
-    default='omicidx_warehouse.duckdb',
-    help='Path to DuckDB warehouse database'
+    '--config',
+    default='warehouse.yml',
+    help='Path to config file'
 )
+def show_config(config):
+    """Show current warehouse configuration."""
+    warehouse_config = load_config(config)
+    print_config(warehouse_config)
+
+
+@warehouse.command()
 @click.option(
-    '--models-dir',
-    default='omicidx_etl/transformations/models',
-    help='Path to models directory'
+    '--config',
+    default='warehouse.yml',
+    help='Path to config file (default: warehouse.yml)'
 )
 @click.option(
     '--models',
@@ -38,27 +46,20 @@ def warehouse():
     help='Specific models to run (can specify multiple times)'
 )
 @click.option(
-    '--threads',
-    default=16,
-    help='Number of threads for DuckDB'
-)
-@click.option(
     '--fail-fast/--no-fail-fast',
     default=True,
     help='Stop on first error'
 )
-def run(db_path, models_dir, models, threads, fail_fast):
+def run(config, models, fail_fast):
     """Run warehouse transformations."""
-    config = WarehouseConfig(
-        db_path=db_path,
-        models_dir=models_dir,
-        threads=threads
-    )
+    # Load config from file + environment variables
+    warehouse_config = load_config(config)
 
-    logger.info(f"Running warehouse: {db_path}")
+    logger.info(f"Running warehouse: {warehouse_config.db_path}")
+    logger.info(f"Export directory: {warehouse_config.export_dir}")
 
     results = run_warehouse(
-        config=config,
+        config=warehouse_config,
         models=list(models) if models else None,
         fail_fast=fail_fast
     )
