@@ -78,3 +78,81 @@ models:
         description: Data quality flag - true if essential library metadata is present
       - name: _loaded_at
         description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_accessions
+    description: |
+      Cleaned and standardized SRA accessions index.
+
+      **Transformations applied**:
+      - Converts '-' placeholders to NULL for cleaner data
+      - Standardizes timestamps to consistent format
+      - Adds data quality flags (public/live, replaced, complete metrics)
+      - Adds helper columns (days since update, accession prefix)
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Finding active (live + public) accessions
+      - Identifying replaced/superseded accessions
+      - Tracking update frequency and data freshness
+      - Grouping by archive (SRA/ENA/DDBJ via prefix)
+    materialized: view
+    depends_on:
+      - raw.sra_accessions
+    tags:
+      - staging
+      - sra
+      - cleaned
+      - index
+    columns:
+      - name: Accession
+        description: Primary accession identifier
+      - name: Submission
+        description: Parent submission accession
+      - name: Type
+        description: Entity type (SUBMISSION, STUDY, EXPERIMENT, SAMPLE, RUN)
+      - name: Status
+        description: Current status (live, suppressed, withdrawn, etc.)
+      - name: Visibility
+        description: Data visibility (public, controlled-access)
+      - name: Updated
+        description: Last update timestamp
+      - name: Published
+        description: Publication timestamp
+      - name: Received
+        description: Receipt timestamp
+      - name: Center
+        description: Submitting center name
+      - name: Alias
+        description: Submitter-provided alias
+      - name: Experiment
+        description: Associated experiment accession (NULL if not applicable or '-')
+      - name: Sample
+        description: Associated sample accession (NULL if not applicable or '-')
+      - name: Study
+        description: Associated study accession (NULL if not applicable or '-')
+      - name: BioSample
+        description: Associated BioSample accession (NULL if not applicable or '-')
+      - name: BioProject
+        description: Associated BioProject accession (NULL if not applicable or '-')
+      - name: ReplacedBy
+        description: Replacement accession if this was superseded (NULL if current)
+      - name: Loaded
+        description: Load status for runs (NULL if not loaded or not a run)
+      - name: Spots
+        description: Number of spots/reads for runs (NULL if not a run)
+      - name: Bases
+        description: Total bases sequenced for runs (NULL if not a run)
+      - name: Md5sum
+        description: MD5 checksum of entity metadata
+      - name: is_public_live
+        description: Quality flag - TRUE if status is 'live' AND visibility is 'public'
+      - name: is_replaced
+        description: Quality flag - TRUE if this accession has been replaced/superseded
+      - name: has_complete_metrics
+        description: Quality flag - TRUE if run has spot counts OR not a run entity
+      - name: days_since_update
+        description: Number of days since last update (for freshness tracking)
+      - name: accession_prefix
+        description: First 3 characters of accession (SRA/ERA/DRA for archive grouping)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
