@@ -1,0 +1,80 @@
+version: 2
+
+models:
+  - name: stg_sra_studies
+    description: |
+      Cleaned and enriched SRA studies.
+      - Standardized date formats
+      - Data quality flags added
+      - Audit timestamps
+    materialized: view
+    depends_on:
+      - raw.sra_studies
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA study accession
+      - name: study_accession
+        description: Study accession identifier
+      - name: title
+        description: Study title
+      - name: abstract
+        description: Study abstract
+      - name: study_type
+        description: Type of study
+      - name: publish_date
+        description: Date study was published (standardized to DATE type)
+      - name: update_date
+        description: Last update date (standardized to DATE type)
+      - name: received_date
+        description: Date study was received (standardized to DATE type)
+      - name: BioProject
+        description: Associated BioProject accession
+      - name: GEO
+        description: Associated GEO series accession
+      - name: has_complete_metadata
+        description: Data quality flag - true if title and description are present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_experiments
+    description: |
+      Cleaned and enriched SRA experiments.
+      - Standardized library metadata
+      - Platform categorization
+      - Quality flags for completeness
+    materialized: view
+    depends_on:
+      - raw.sra_experiments
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA experiment accession
+      - name: experiment_accession
+        description: Experiment accession identifier
+      - name: study_accession
+        description: Parent study accession
+      - name: sample_accession
+        description: Associated sample accession
+      - name: platform
+        description: Sequencing platform
+      - name: instrument_model
+        description: Specific instrument model
+      - name: library_strategy
+        description: Library strategy (RNA-Seq, WGS, etc.)
+      - name: library_source
+        description: Library source material
+      - name: library_selection
+        description: Library selection method
+      - name: library_layout
+        description: Library layout (SINGLE or PAIRED)
+      - name: has_complete_library_info
+        description: Data quality flag - true if essential library metadata is present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse

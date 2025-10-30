@@ -13,6 +13,7 @@ from omicidx_etl.etl.europepmc_textmined import europepmc
 from .nih_reporter import nih_reporter
 from .catalog import catalog
 from .status import status
+from .warehouse_cli import warehouse
 
 
 @click.group()
@@ -31,6 +32,7 @@ cli.add_command(icite)
 cli.add_command(pubmed)
 cli.add_command(europepmc)
 cli.add_command(nih_reporter)
+cli.add_command(warehouse)
 
 if __name__ == "__main__":
     cli()

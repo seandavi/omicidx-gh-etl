@@ -1,0 +1,110 @@
+version: 2
+
+models:
+  - name: sra_studies
+    description: |
+      Raw SRA study metadata directly from parquet files.
+      This is the entry point from ETL pipeline to warehouse.
+      No transformations applied - just consolidation of source files.
+    materialized: view
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA study accession (SRP/ERP/DRP)
+      - name: study_accession
+        description: Study accession identifier
+      - name: title
+        description: Study title
+      - name: abstract
+        description: Study abstract
+      - name: study_type
+        description: Type of study (e.g., Transcriptome Analysis, Genome Sequencing)
+      - name: BioProject
+        description: Associated BioProject accession
+      - name: GEO
+        description: Associated GEO series accession (GSE)
+
+  - name: sra_experiments
+    description: |
+      Raw SRA experiment metadata from parquet files.
+      Contains library construction, sequencing platform, and protocol details.
+    materialized: view
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA experiment accession (SRX/ERX/DRX)
+      - name: study_accession
+        description: Parent study accession
+      - name: sample_accession
+        description: Associated sample accession
+      - name: platform
+        description: Sequencing platform (ILLUMINA, PACBIO, etc.)
+      - name: instrument_model
+        description: Specific instrument model
+      - name: library_strategy
+        description: Library strategy (RNA-Seq, WGS, ChIP-Seq, etc.)
+      - name: library_source
+        description: Library source (GENOMIC, TRANSCRIPTOMIC, etc.)
+      - name: library_selection
+        description: Library selection method
+
+  - name: sra_samples
+    description: |
+      Raw SRA sample metadata from parquet files.
+      Contains organism information and sample attributes.
+    materialized: view
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA sample accession (SRS/ERS/DRS)
+      - name: sample_accession
+        description: Sample accession identifier
+      - name: organism
+        description: Source organism name
+      - name: taxon_id
+        description: NCBI taxonomy ID
+      - name: BioSample
+        description: Associated BioSample accession
+
+  - name: sra_runs
+    description: |
+      Raw SRA run metadata from parquet files.
+      Contains sequencing run details and file information.
+    materialized: view
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA run accession (SRR/ERR/DRR)
+      - name: experiment_accession
+        description: Parent experiment accession
+      - name: run_date
+        description: Date when sequencing run was performed
+
+  - name: ncbi_biosamples
+    description: |
+      Raw NCBI BioSample metadata from parquet files.
+      Contains detailed sample attributes and characteristics.
+    materialized: view
+    tags:
+      - raw
+      - biosample
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique BioSample accession (SAMN/SAMEA/SAMD)
+      - name: organism
+        description: Source organism
+      - name: attribute_recs
+        description: Array of sample attributes (key-value pairs)
