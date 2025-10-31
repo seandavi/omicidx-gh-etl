@@ -122,18 +122,6 @@ main() {
     run_task "extract_geo" uv run oidx geo extract \
         || failed_tasks+=("extract_geo")
 
-    # Stage 2: Transformations
-    # Only run if at least some extractions succeeded
-    if [ ${#failed_tasks[@]} -lt 5 ]; then
-        log "INFO" "\nStage 2: Transformations"
-        log "INFO" "------------------------"
-
-        run_task "transform_data" uv run oidx transform run --extract-dir "$EXTRACT_DIR" \
-            || failed_tasks+=("transform_data")
-    else
-        log "WARN" "Skipping transformations - too many extraction failures"
-    fi
-
     # Stage 3: Catalog
     log "INFO" "\nStage 3: Metadata Catalog"
     log "INFO" "-------------------------"
