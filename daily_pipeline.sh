@@ -122,13 +122,6 @@ main() {
     run_task "extract_geo" uv run oidx geo extract \
         || failed_tasks+=("extract_geo")
 
-    # Stage 3: Catalog
-    log "INFO" "\nStage 3: Metadata Catalog"
-    log "INFO" "-------------------------"
-
-    run_task "build_catalog" uv run oidx catalog build --data-dir "$EXTRACT_DIR" \
-        || failed_tasks+=("build_catalog")
-
     # Finalize metrics
     local tmp_file="${METRICS_FILE}.tmp"
     jq ".end_time = \"$(date -Iseconds)\"" "$METRICS_FILE" > "$tmp_file"
