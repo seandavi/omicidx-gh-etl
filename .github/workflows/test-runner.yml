@@ -4,6 +4,8 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'  # Runs at 8:00 AM UTC daily
 
 jobs:
   etl-jobs:
