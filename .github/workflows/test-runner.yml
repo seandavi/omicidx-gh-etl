@@ -6,16 +6,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  deploy-warehouse:
     runs-on: [self-hosted, Linux, X64] # Replace with your runner's labels
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Warehouse creation
-        run: uv run oidx warehouse run
       - name: Run tests
-        run: uv run oidx warehouse deploy upload
+        run: uv run oidx warehouse deploy upload --config /home/davsean/Documents/git/omicidx-gh-etl/warehouse.yml
       - name: create mirror views databases
-        run: uv run oidx warehouse deploy all
+        run: uv run oidx warehouse deploy all --config /home/davsean/Documents/git/omicidx-gh-etl/warehouse.yml
       - name: List directory contents
         run: ls -la
