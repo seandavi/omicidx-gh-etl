@@ -12,8 +12,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Run tests
-        run: uv run oidx warehouse deploy upload --config /home/davsean/warehouse.yml
+        run: uv run oidx warehouse deploy upload --config /data/davsean/warehouse.yml
       - name: create mirror views databases
-        run: uv run oidx warehouse deploy all --config /home/davsean/warehouse.yml
+        run: uv run oidx warehouse deploy all --config /data/davsean/warehouse.yml
       - name: List directory contents
         run: ls -la
