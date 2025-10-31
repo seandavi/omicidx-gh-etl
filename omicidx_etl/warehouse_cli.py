@@ -508,11 +508,6 @@ def deploy_upload(config, data, catalog, database, dry_run):
     if dry_run:
         return
 
-    # Confirm upload
-    if not click.confirm("\nProceed with upload?"):
-        click.echo("Upload cancelled.")
-        return
-
     # Upload files
     click.echo("\nUploading files...")
     success_count = 0
