@@ -1,4 +1,4 @@
-name: Test Self-Hosted Runner
+name: Deploy Warehouse
 on: 
   push:
     branches:
@@ -6,14 +6,23 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-warehouse:
+  etl-jobs:
     runs-on: [self-hosted, Linux, X64] # Replace with your runner's labels
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run tests
+      - name: run all etl jobs
+        run: uv run ./daily_pipeline.sh 
+
+  deploy-warehouse:
+    needs: etl-jobs
+    runs-on: [self-hosted, Linux, X64] # Replace with your runner's labels
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: run all models
+        run: uv run oidx warehouse run --config /data/davsean/warehouse.yml
+      - name: Run warehouse upload first # fix to ensure that files are present before creating mirror views 
         run: uv run oidx warehouse deploy upload --config /data/davsean/warehouse.yml
       - name: create mirror views databases
         run: uv run oidx warehouse deploy all --config /data/davsean/warehouse.yml
-      - name: List directory contents
-        run: ls -la
