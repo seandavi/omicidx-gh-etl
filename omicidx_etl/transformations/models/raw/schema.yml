@@ -1,0 +1,251 @@
+version: 2
+
+models:
+  - name: sra_studies
+    description: |
+      Raw SRA study metadata directly from parquet files.
+      This is the entry point from ETL pipeline to warehouse.
+      No transformations applied - just consolidation of source files.
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_studies.parquet
+      compression: zstd
+      row_group_size: 100000
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA study accession (SRP/ERP/DRP)
+      - name: study_accession
+        description: Study accession identifier
+      - name: title
+        description: Study title
+      - name: abstract
+        description: Study abstract
+      - name: study_type
+        description: Type of study (e.g., Transcriptome Analysis, Genome Sequencing)
+      - name: BioProject
+        description: Associated BioProject accession
+      - name: GEO
+        description: Associated GEO series accession (GSE)
+
+  - name: sra_experiments
+    description: |
+      Raw SRA experiment metadata from parquet files.
+      Contains library construction, sequencing platform, and protocol details.
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_experiments.parquet
+      compression: zstd
+      row_group_size: 100000
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA experiment accession (SRX/ERX/DRX)
+      - name: study_accession
+        description: Parent study accession
+      - name: sample_accession
+        description: Associated sample accession
+      - name: platform
+        description: Sequencing platform (ILLUMINA, PACBIO, etc.)
+      - name: instrument_model
+        description: Specific instrument model
+      - name: library_strategy
+        description: Library strategy (RNA-Seq, WGS, ChIP-Seq, etc.)
+      - name: library_source
+        description: Library source (GENOMIC, TRANSCRIPTOMIC, etc.)
+      - name: library_selection
+        description: Library selection method
+
+  - name: sra_samples
+    description: |
+      Raw SRA sample metadata from parquet files.
+      Contains organism information and sample attributes.
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_samples.parquet
+      compression: zstd
+      row_group_size: 100000
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA sample accession (SRS/ERS/DRS)
+      - name: sample_accession
+        description: Sample accession identifier
+      - name: organism
+        description: Source organism name
+      - name: taxon_id
+        description: NCBI taxonomy ID
+      - name: BioSample
+        description: Associated BioSample accession
+
+  - name: sra_runs
+    description: |
+      Raw SRA run metadata from parquet files.
+      Contains sequencing run details and file information.
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/sra_runs.parquet
+      compression: zstd
+      row_group_size: 100000
+    tags:
+      - raw
+      - sra
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique SRA run accession (SRR/ERR/DRR)
+      - name: experiment_accession
+        description: Parent experiment accession
+      - name: run_date
+        description: Date when sequencing run was performed
+
+  - name: ncbi_biosamples
+    description: |
+      Raw NCBI BioSample metadata from parquet files.
+      Contains detailed sample attributes and characteristics.
+    materialized: export_view
+    export:
+      enabled: true
+      path: raw/ncbi_biosamples.parquet
+      compression: zstd
+      row_group_size: 100000
+    tags:
+      - raw
+      - biosample
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique BioSample accession (SAMN/SAMEA/SAMD)
+      - name: organism
+        description: Source organism
+      - name: attribute_recs
+        description: Array of sample attributes (key-value pairs)
+
+  - name: sra_accessions
+    description: |
+      Comprehensive index of all SRA accessions across all entity types.
+      This table provides a unified view of submissions, studies, experiments,
+      samples, and runs with their status, timestamps, and cross-references.
+
+      **Entity Types**: SUBMISSION, STUDY, EXPERIMENT, SAMPLE, RUN
+      **Use Cases**:
+      - Finding all accessions for a given submission
+      - Tracking accession status and updates
+      - Linking between different entity types
+      - Identifying replaced/superseded accessions
+
+      **Note**: Materialized as table (not view) since source is HTTPS/FTP.
+      Data is loaded once and cached locally for fast querying.
+    materialized: table
+    tags:
+      - raw
+      - sra
+      - ncbi
+      - index
+    columns:
+      - name: Accession
+        description: Primary accession identifier (varies by Type - DRA/SRA/ERA/ERP/SRP/DRX/SRX/ERX/DRS/SRS/ERS/DRR/SRR/ERR)
+      - name: Submission
+        description: Submission accession this entity belongs to
+      - name: Status
+        description: Current status of the accession (live, suppressed, withdrawn, etc.)
+      - name: Updated
+        description: Timestamp of last update (ISO 8601 format with timezone)
+      - name: Published
+        description: Timestamp when accession was first published (ISO 8601 format)
+      - name: Received
+        description: Timestamp when data was first received (ISO 8601 format)
+      - name: Type
+        description: Entity type (SUBMISSION, STUDY, EXPERIMENT, SAMPLE, RUN)
+      - name: Center
+        description: Submitting center name (e.g., KEIO, BioSample)
+      - name: Visibility
+        description: Data visibility status (public, controlled-access, etc.)
+      - name: Alias
+        description: Submitter-provided alias/identifier
+      - name: Experiment
+        description: Associated experiment accession (for RUNs)
+      - name: Sample
+        description: Associated sample accession (for EXPERIMENTs)
+      - name: Study
+        description: Associated study accession (for EXPERIMENTs and RUNs)
+      - name: Loaded
+        description: Load status indicator (populated for RUNs)
+      - name: Spots
+        description: Number of spots/reads (for RUNs)
+      - name: Bases
+        description: Total number of bases sequenced (for RUNs)
+      - name: Md5sum
+        description: MD5 checksum of the entity metadata
+      - name: BioSample
+        description: Associated BioSample accession
+      - name: BioProject
+        description: Associated BioProject accession
+      - name: ReplacedBy
+        description: If this accession was replaced, the new accession that supersedes it
+
+
+  - name: geo_platforms
+    description: |
+      Raw GEO platform (GPL) metadata from NDJSON files.
+      Contains information about microarray and sequencing platforms used in GEO studies.
+    materialized: view
+    tags:
+      - raw
+      - geo
+      - gpl
+    columns:
+      - name: accession
+        description: Unique GEO platform accession (GPL)
+
+  - name: geo_samples
+    description: |
+      Raw GEO sample (GSM) metadata from NDJSON files.
+      Contains detailed information about individual samples in GEO studies.
+    materialized: view
+    tags:
+      - raw
+      - geo
+      - gsm
+    columns:
+      - name: accession
+        description: Unique GEO sample accession (GSM)
+
+  - name: geo_series
+    description: |
+      Raw GEO series (GSE) metadata from NDJSON files.
+      Contains information about GEO studies and their associated samples and platforms.
+    materialized: view
+    tags:
+      - raw
+      - geo
+      - gse
+    columns:
+      - name: accession
+        description: Unique GEO series accession (GSE)
+
+  - name: ncbi_bioprojects
+    description: |
+      Raw NCBI BioProject metadata from parquet files.
+      Contains high-level project information linking multiple BioSamples and SRA studies.
+    materialized: view
+    tags:
+      - raw
+      - bioproject
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique BioProject accession (PRJNA/PRJEB/PRJD)

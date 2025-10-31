@@ -1,0 +1,17 @@
+name: Test Self-Hosted Runner
+on: 
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: [self-hosted, Linux, X64] # Replace with your runner's labels
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run a simple command
+        run: echo "Hello from self-hosted runner!"
+      - name: List directory contents
+        run: ls -la

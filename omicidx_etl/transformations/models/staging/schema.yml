@@ -1,0 +1,636 @@
+version: 2
+
+models:
+  - name: stg_sra_studies
+    description: |
+      Cleaned and enriched SRA studies.
+      - Standardized date formats
+      - Data quality flags added
+      - Audit timestamps
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_sra_studies.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_studies
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA study accession
+      - name: study_accession
+        description: Study accession identifier
+      - name: title
+        description: Study title
+      - name: abstract
+        description: Study abstract
+      - name: study_type
+        description: Type of study
+      - name: publish_date
+        description: Date study was published (standardized to DATE type)
+      - name: update_date
+        description: Last update date (standardized to DATE type)
+      - name: received_date
+        description: Date study was received (standardized to DATE type)
+      - name: BioProject
+        description: Associated BioProject accession
+      - name: GEO
+        description: Associated GEO series accession
+      - name: has_complete_metadata
+        description: Data quality flag - true if title and description are present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_experiments
+    description: |
+      Cleaned and enriched SRA experiments.
+      - Standardized library metadata
+      - Platform categorization
+      - Quality flags for completeness
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_sra_experiments.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_experiments
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA experiment accession
+      - name: experiment_accession
+        description: Experiment accession identifier
+      - name: study_accession
+        description: Parent study accession
+      - name: sample_accession
+        description: Associated sample accession
+      - name: platform
+        description: Sequencing platform
+      - name: instrument_model
+        description: Specific instrument model
+      - name: library_strategy
+        description: Library strategy (RNA-Seq, WGS, etc.)
+      - name: library_source
+        description: Library source material
+      - name: library_selection
+        description: Library selection method
+      - name: library_layout
+        description: Library layout (SINGLE or PAIRED)
+      - name: has_complete_library_info
+        description: Data quality flag - true if essential library metadata is present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_runs
+    description: |
+      Cleaned and enriched SRA runs.
+      - Standardized run metadata
+      - Parsed run dates
+      - Quality flags for completeness
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_sra_runs.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_runs
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA run accession
+      - name: experiment_accession
+        description: Parent experiment accession
+      - name: title
+        description: Run title
+      - name: run_center
+        description: Center that performed the sequencing run
+      - name: run_date
+        description: Date when sequencing run was performed (standardized to TIMESTAMP)
+      - name: center_name
+        description: Submitting center name
+      - name: broker_name
+        description: Broker organization name
+      - name: alias
+        description: Submitter-provided alias
+      - name: GEO
+        description: Associated GEO accession
+      - name: identifiers
+        description: Additional identifiers (STRUCT)
+      - name: attributes
+        description: Run attributes (STRUCT array)
+      - name: qualities
+        description: Quality score arrays
+      - name: has_complete_run_info
+        description: Data quality flag - true if essential run metadata is present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_samples
+    description: |
+      Cleaned and enriched SRA samples.
+      - Standardized organism metadata
+      - Validated taxonomy information
+      - Quality flags for completeness
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_sra_samples.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_samples
+    tags:
+      - staging
+      - sra
+      - cleaned
+    columns:
+      - name: accession
+        description: Unique SRA sample accession
+      - name: sample_accession
+        description: Sample accession identifier
+      - name: title
+        description: Sample title
+      - name: description
+        description: Sample description
+      - name: organism
+        description: Source organism name
+      - name: taxon_id
+        description: NCBI taxonomy ID
+      - name: BioSample
+        description: Associated BioSample accession
+      - name: center_name
+        description: Submitting center name
+      - name: broker_name
+        description: Broker organization name
+      - name: alias
+        description: Submitter-provided alias
+      - name: GEO
+        description: Associated GEO accession
+      - name: identifiers
+        description: Additional identifiers (STRUCT)
+      - name: attributes
+        description: Sample attributes (STRUCT array)
+      - name: xrefs
+        description: Cross-references to other databases (STRUCT array)
+      - name: has_complete_organism_info
+        description: Data quality flag - true if organism and taxon_id are present
+      - name: has_biosample_link
+        description: Data quality flag - true if linked to a BioSample
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_sra_accessions
+    description: |
+      Cleaned and standardized SRA accessions index.
+
+      **Transformations applied**:
+      - Converts '-' placeholders to NULL for cleaner data
+      - Standardizes timestamps to consistent format
+      - Adds data quality flags (public/live, replaced, complete metrics)
+      - Adds helper columns (days since update, accession prefix)
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Finding active (live + public) accessions
+      - Identifying replaced/superseded accessions
+      - Tracking update frequency and data freshness
+      - Grouping by archive (SRA/ENA/DDBJ via prefix)
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_sra_accessions.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.sra_accessions
+    tags:
+      - staging
+      - sra
+      - cleaned
+      - index
+    columns:
+      - name: Accession
+        description: Primary accession identifier
+      - name: Submission
+        description: Parent submission accession
+      - name: Type
+        description: Entity type (SUBMISSION, STUDY, EXPERIMENT, SAMPLE, RUN)
+      - name: Status
+        description: Current status (live, suppressed, withdrawn, etc.)
+      - name: Visibility
+        description: Data visibility (public, controlled-access)
+      - name: Updated
+        description: Last update timestamp
+      - name: Published
+        description: Publication timestamp
+      - name: Received
+        description: Receipt timestamp
+      - name: Center
+        description: Submitting center name
+      - name: Alias
+        description: Submitter-provided alias
+      - name: Experiment
+        description: Associated experiment accession (NULL if not applicable or '-')
+      - name: Sample
+        description: Associated sample accession (NULL if not applicable or '-')
+      - name: Study
+        description: Associated study accession (NULL if not applicable or '-')
+      - name: BioSample
+        description: Associated BioSample accession (NULL if not applicable or '-')
+      - name: BioProject
+        description: Associated BioProject accession (NULL if not applicable or '-')
+      - name: ReplacedBy
+        description: Replacement accession if this was superseded (NULL if current)
+      - name: Loaded
+        description: Load status for runs (NULL if not loaded or not a run)
+      - name: Spots
+        description: Number of spots/reads for runs (NULL if not a run)
+      - name: Bases
+        description: Total bases sequenced for runs (NULL if not a run)
+      - name: Md5sum
+        description: MD5 checksum of entity metadata
+      - name: is_public_live
+        description: Quality flag - TRUE if status is 'live' AND visibility is 'public'
+      - name: is_replaced
+        description: Quality flag - TRUE if this accession has been replaced/superseded
+      - name: has_complete_metrics
+        description: Quality flag - TRUE if run has spot counts OR not a run entity
+      - name: days_since_update
+        description: Number of days since last update (for freshness tracking)
+      - name: accession_prefix
+        description: First 3 characters of accession (SRA/ERA/DRA for archive grouping)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_geo_platforms
+    description: |
+      Cleaned and standardized GEO platform (GPL) metadata.
+
+      **Transformations applied**:
+      - Flattens contact STRUCT into separate columns
+      - Preserves array columns for samples and series
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Understanding microarray/sequencing platform details
+      - Linking platforms to samples and series
+      - Platform technology and manufacturer analysis
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_geo_platforms.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.geo_platforms
+    tags:
+      - staging
+      - geo
+      - gpl
+      - platforms
+    columns:
+      - name: accession
+        description: Unique GEO platform accession (GPL)
+      - name: title
+        description: Platform title
+      - name: status
+        description: Platform status (Public, etc.)
+      - name: submission_date
+        description: Date platform was submitted
+      - name: last_update_date
+        description: Date of last update
+      - name: organism
+        description: Primary organism for platform
+      - name: technology
+        description: Platform technology type (e.g., spotted DNA/cDNA, in situ oligonucleotide)
+      - name: manufacturer
+        description: Platform manufacturer(s)
+      - name: distribution
+        description: Distribution type (commercial, non-commercial, custom)
+      - name: data_row_count
+        description: Number of data rows/features on platform
+      - name: description
+        description: Detailed platform description
+      - name: manufacture_protocol
+        description: Manufacturing protocol details
+      - name: contact_first_name
+        description: Contact person first name
+      - name: contact_last_name
+        description: Contact person last name
+      - name: contact_email
+        description: Contact email address
+      - name: contact_institute
+        description: Contact institution
+      - name: contact_country
+        description: Contact country
+      - name: sample_id
+        description: Array of sample accessions (GSM) using this platform
+      - name: series_id
+        description: Array of series accessions (GSE) using this platform
+      - name: relation
+        description: Array of related entities
+      - name: summary
+        description: Platform summary (JSON)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_geo_samples
+    description: |
+      Cleaned and standardized GEO sample (GSM) metadata.
+
+      **Transformations applied**:
+      - Flattens contact STRUCT into separate columns
+      - Preserves complex nested structures (channels, contributors)
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Sample-level metadata and characteristics
+      - Linking samples to platforms, series, and SRA
+      - Protocol and processing information
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_geo_samples.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.geo_samples
+    tags:
+      - staging
+      - geo
+      - gsm
+      - samples
+    columns:
+      - name: accession
+        description: Unique GEO sample accession (GSM)
+      - name: title
+        description: Sample title
+      - name: status
+        description: Sample status
+      - name: type
+        description: Sample type (RNA, genomic, etc.)
+      - name: submission_date
+        description: Date sample was submitted
+      - name: last_update_date
+        description: Date of last update
+      - name: biosample
+        description: Associated NCBI BioSample accession
+      - name: platform_id
+        description: Platform accession (GPL) used for this sample
+      - name: sra_experiment
+        description: Associated SRA experiment accession (SRX)
+      - name: description
+        description: Sample description
+      - name: anchor
+        description: Anchor type
+      - name: channel_count
+        description: Number of channels
+      - name: tag_count
+        description: Number of tags
+      - name: tag_length
+        description: Average tag length
+      - name: data_row_count
+        description: Number of data rows
+      - name: library_source
+        description: Library source material
+      - name: hyb_protocol
+        description: Hybridization protocol
+      - name: scan_protocol
+        description: Scanning protocol
+      - name: data_processing
+        description: Data processing description
+      - name: contact_first_name
+        description: Contact person first name
+      - name: contact_last_name
+        description: Contact person last name
+      - name: contact_email
+        description: Contact email address
+      - name: contact_institute
+        description: Contact institution
+      - name: contact_country
+        description: Contact country
+      - name: supplemental_files
+        description: Array of supplemental file URLs
+      - name: channels
+        description: Channel information (nested STRUCT)
+      - name: overall_design
+        description: Overall experimental design (JSON)
+      - name: contributor
+        description: Contributors (JSON array)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_geo_series
+    description: |
+      Cleaned and standardized GEO series (GSE) metadata.
+
+      **Transformations applied**:
+      - Flattens contact STRUCT into separate columns
+      - Preserves array columns for cross-references
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Study-level metadata and design
+      - Linking series to samples, platforms, BioProjects, and SRA
+      - Publication and organism information
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_geo_series.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.geo_series
+    tags:
+      - staging
+      - geo
+      - gse
+      - series
+    columns:
+      - name: accession
+        description: Unique GEO series accession (GSE)
+      - name: title
+        description: Series title
+      - name: status
+        description: Series status
+      - name: submission_date
+        description: Date series was submitted
+      - name: last_update_date
+        description: Date of last update
+      - name: summary
+        description: Series summary/description
+      - name: overall_design
+        description: Overall experimental design
+      - name: contact_first_name
+        description: Contact person first name
+      - name: contact_last_name
+        description: Contact person last name
+      - name: contact_email
+        description: Contact email address
+      - name: contact_institute
+        description: Contact institution
+      - name: contact_country
+        description: Contact country
+      - name: subseries
+        description: Array of subseries accessions
+      - name: bioprojects
+        description: Array of associated BioProject accessions
+      - name: sra_studies
+        description: Array of associated SRA study accessions
+      - name: pubmed_id
+        description: Array of associated PubMed IDs
+      - name: sample_id
+        description: Array of sample accessions (GSM) in this series
+      - name: platform_id
+        description: Array of platform accessions (GPL) used in this series
+      - name: relation
+        description: Array of related entities
+      - name: sample_taxid
+        description: Array of sample taxonomy IDs
+      - name: sample_organism
+        description: Array of sample organism names
+      - name: platform_taxid
+        description: Array of platform taxonomy IDs
+      - name: platform_organism
+        description: Array of platform organism names
+      - name: type
+        description: Array of experiment types
+      - name: supplemental_files
+        description: Array of supplemental file URLs
+      - name: data_processing
+        description: Data processing details (JSON)
+      - name: description
+        description: Detailed description (JSON)
+      - name: contributor
+        description: Contributors (nested STRUCT array)
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_ncbi_biosamples
+    description: |
+      Cleaned and standardized NCBI BioSample metadata.
+
+      **Transformations applied**:
+      - Converts date strings to proper DATE types
+      - Preserves attribute structures for downstream processing
+      - Filters out NULL accessions
+
+      **Use cases**:
+      - Sample attribute and characteristic analysis
+      - Linking BioSamples to SRA, GEO, and dbGaP
+      - Taxonomy and organism information
+      - Sample model and attribute harmonization
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_ncbi_biosamples.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.ncbi_biosamples
+    tags:
+      - staging
+      - biosample
+      - ncbi
+    columns:
+      - name: accession
+        description: Unique BioSample accession (SAMN/SAMEA/SAMD)
+      - name: id
+        description: Internal BioSample ID
+      - name: title
+        description: Sample title
+      - name: description
+        description: Sample description
+      - name: sra_sample
+        description: Associated SRA sample accession
+      - name: dbgap
+        description: Associated dbGaP study accession
+      - name: gsm
+        description: Associated GEO sample accession (GSM)
+      - name: taxonomy_name
+        description: Organism taxonomy name
+      - name: taxon_id
+        description: NCBI taxonomy ID
+      - name: access
+        description: Access level (public, controlled)
+      - name: is_reference
+        description: Whether this is a reference sample
+      - name: submission_date
+        description: Date sample was submitted (converted to DATE)
+      - name: last_update
+        description: Date of last update (converted to DATE)
+      - name: publication_date
+        description: Date sample was published (converted to DATE)
+      - name: model
+        description: BioSample data model used
+      - name: id_recs
+        description: Array of ID records (nested STRUCT)
+      - name: ids
+        description: Array of associated IDs
+      - name: attribute_recs
+        description: Array of sample attributes (nested STRUCT with harmonized names)
+      - name: attributes
+        description: Array of attribute strings
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
+
+  - name: stg_ncbi_bioprojects
+    description: |
+      Cleaned and standardized NCBI BioProject metadata.
+
+      **Transformations applied**:
+      - Converts release_date to DATE
+      - Preserves nested structures (publications, external_links, locus_tags)
+      - Adds data quality flags and audit timestamp
+
+      **Use cases**:
+      - Linking studies/series to BioProjects
+      - Understanding project-level scope and release timing
+      - Navigating external links and publication references
+    materialized: export_view
+    export:
+      enabled: true
+      path: "staging/stg_ncbi_bioprojects.parquet"
+      compression: zstd
+      row_group_size: 100000
+    depends_on:
+      - raw.ncbi_bioprojects
+    tags:
+      - staging
+      - bioproject
+      - ncbi
+    columns:
+      - name: accession
+        description: BioProject accession identifier (PRJNA/PRJEB/PRJDB)
+      - name: name
+        description: Short project name/label
+      - name: title
+        description: Project title
+      - name: description
+        description: Project description/abstract
+      - name: release_date
+        description: Project release date (converted to DATE)
+      - name: data_types
+        description: Array of data types associated with the project
+      - name: publications
+        description: Publications associated with the project (STRUCT array)
+      - name: external_links
+        description: External links (STRUCT array with category/label/url)
+      - name: locus_tags
+        description: Locus tag info (STRUCT with assembly and biosample context)
+      - name: has_core_metadata
+        description: Data quality flag - TRUE if accession and (title or name) are present
+      - name: _loaded_at
+        description: Timestamp when record was loaded into warehouse
