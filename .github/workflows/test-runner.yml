@@ -11,7 +11,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Run a simple command
-        run: uv run oidx warehouse run --models sra_studies
+      - name: Warehouse creation
+        run: uv run oidx warehouse run
+      - name: Run tests
+        run: uv run oidx warehouse deploy upload
+      - name: create mirror views databases
+        run: uv run oidx warehouse deploy all
       - name: List directory contents
         run: ls -la
