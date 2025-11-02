@@ -9,6 +9,8 @@ on:
 
 jobs:
   etl-jobs:
+    env:
+      PUBLISH_DIRECTORY: /data/davsean/omicidx_root
     runs-on: [self-hosted, Linux, X64] # Replace with your runner's labels
     steps:
       - name: Checkout code
