@@ -1,3 +1,2 @@
--- Raw SRA samples from parquet source
-
-SELECT * FROM read_parquet('/data/davsean/omicidx_root/sra/*sample*.parquet', union_by_name := true)
+create or replace view src_sra_samples as
+select * from read_parquet('/data/davsean/omicidx_root/exports/src_sra_samples.parquet');

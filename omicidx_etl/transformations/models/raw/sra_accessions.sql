@@ -1,4 +1,4 @@
--- Raw SRA accessions from parquet source
 -- This is a comprehensive index of all SRA accessions across all entity types
-
-SELECT * FROM read_csv_auto('https://ftp.ncbi.nlm.nih.gov/sra/reports/Metadata/SRA_Accessions.tab', nullstr=['-'])
+create or replace view src_sra_accessions as
+    select * from
+    read_parquet('/data/davsean/omicidx_root/src_sra_accessions.parquet');

@@ -1,5 +1,3 @@
--- Raw SRA studies from parquet source
--- This is the entry point from your ETL pipeline to the warehouse
--- Minimal transformation: just consolidate parquet files
 
-SELECT * FROM read_parquet('/data/davsean/omicidx_root/sra/*study*.parquet', union_by_name := true)
+create or replace view src_sra_studies as
+select * from read_parquet('/data/davsean/omicidx_root/exports/src_sra_studies.parquet');
