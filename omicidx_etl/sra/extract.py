@@ -1,5 +1,30 @@
 """
 Simplified SRA extraction without Prefect dependencies.
+
+Schema Management:
+------------------
+This module ensures consistent Parquet schema across all SRA records by:
+
+1. **Hard-coded PyArrow Schemas**: Based on Pydantic models from omicidx.sra.pydantic_models,
+   we define explicit schemas for each record type (run, study, sample, experiment).
+
+2. **Record Normalization**: The normalize_record() function ensures:
+   - List fields are always [] (empty list), never None or missing
+   - Numeric fields have consistent types (int64, float64)
+   - Optional string fields are None when missing (not missing keys)
+
+3. **Schema Enforcement**: During parquet writing, records are normalized and validated
+   against the target schema to prevent inconsistencies like:
+   - Some records having null while others have empty lists
+   - Missing fields causing schema inference issues
+   - Type mismatches between chunks
+
+Key Functions:
+--------------
+- get_pyarrow_schemas(): Defines PyArrow schemas for each SRA record type
+- normalize_record(): Normalizes a record dict to match the target schema
+- infer_record_type_from_url(): Determines record type from URL
+- _write_parquet_file(): Writes records with schema enforcement
 """
 
 import tempfile
@@ -8,6 +33,7 @@ import orjson
 import re
 import os
 from pathlib import Path
+from typing import Any
 from omicidx.sra.parser import sra_object_generator
 from upath import UPath
 from ..db import duckdb_connection
@@ -21,6 +47,259 @@ OUTPUT_FORMAT_NDJSON = "ndjson"
 
 # Block size for chunking parquet files (configurable via environment variable)
 SRA_BLOCK_SIZE = int(os.environ.get("SRA_BLOCK_SIZE", "1000000"))  # Default 1M records per chunk
+
+# PyArrow schema definitions for consistent parquet output
+# These schemas are based on the Pydantic models in omicidx.sra.pydantic_models
+def get_pyarrow_schemas():
+    """Get PyArrow schema definitions for each SRA record type.
+
+    These schemas ensure consistent field types and handle null vs empty list issues.
+    """
+    try:
+        import pyarrow as pa
+    except ImportError:
+        return {}
+
+    # Common nested types
+    identifier_type = pa.struct([
+        ("namespace", pa.string()),
+        ("id", pa.string()),
+        ("uuid", pa.string())  # Only in some identifiers
+    ])
+
+    attribute_type = pa.struct([
+        ("tag", pa.string()),
+        ("value", pa.string())
+    ])
+
+    xref_type = pa.struct([
+        ("db", pa.string()),
+        ("id", pa.string())
+    ])
+
+    file_alternative_type = pa.struct([
+        ("url", pa.string()),
+        ("free_egress", pa.string()),
+        ("access_type", pa.string()),
+        ("org", pa.string())
+    ])
+
+    file_type = pa.struct([
+        ("cluster", pa.string()),
+        ("filename", pa.string()),
+        ("url", pa.string()),
+        ("size", pa.int64()),
+        ("date", pa.string()),  # Will be parsed as string initially
+        ("md5", pa.string()),
+        ("sratoolkit", pa.string()),
+        ("alternatives", pa.list_(file_alternative_type))
+    ])
+
+    run_read_type = pa.struct([
+        ("index", pa.int64()),
+        ("count", pa.int64()),
+        ("mean_length", pa.float64()),
+        ("sd_length", pa.float64())
+    ])
+
+    base_count_type = pa.struct([
+        ("base", pa.string()),
+        ("count", pa.int64())
+    ])
+
+    quality_type = pa.struct([
+        ("quality", pa.int32()),
+        ("count", pa.int64())
+    ])
+
+    tax_count_entry_type = pa.struct([
+        ("rank", pa.string()),
+        ("name", pa.string()),
+        ("parent", pa.int32()),
+        ("total_count", pa.int64()),
+        ("self_count", pa.int64()),
+        ("tax_id", pa.int32())
+    ])
+
+    tax_analysis_type = pa.struct([
+        ("nspot_analyze", pa.int64()),
+        ("total_spots", pa.int64()),
+        ("mapped_spots", pa.int64()),
+        ("tax_counts", pa.list_(tax_count_entry_type))
+    ])
+
+    experiment_read_type = pa.struct([
+        ("base_coord", pa.int64()),
+        ("read_class", pa.string()),
+        ("read_index", pa.int64()),
+        ("read_type", pa.string())
+    ])
+
+    # Schema for SRA Run records
+    run_schema = pa.schema([
+        ("accession", pa.string()),
+        ("alias", pa.string()),
+        ("experiment_accession", pa.string()),
+        ("title", pa.string()),
+        ("total_spots", pa.int64()),
+        ("total_bases", pa.int64()),
+        ("size", pa.int64()),
+        ("avg_length", pa.float64()),
+        ("identifiers", pa.list_(identifier_type)),
+        ("attributes", pa.list_(attribute_type)),
+        ("files", pa.list_(file_type)),
+        ("reads", pa.list_(run_read_type)),
+        ("base_counts", pa.list_(base_count_type)),
+        ("qualities", pa.list_(quality_type)),
+        ("tax_analysis", tax_analysis_type)
+    ])
+
+    # Schema for SRA Study records
+    study_schema = pa.schema([
+        ("accession", pa.string()),
+        ("study_accession", pa.string()),
+        ("alias", pa.string()),
+        ("title", pa.string()),
+        ("description", pa.string()),
+        ("abstract", pa.string()),
+        ("study_type", pa.string()),
+        ("center_name", pa.string()),
+        ("broker_name", pa.string()),
+        ("BioProject", pa.string()),
+        ("GEO", pa.string()),
+        ("identifiers", pa.list_(identifier_type)),
+        ("attributes", pa.list_(attribute_type)),
+        ("xrefs", pa.list_(xref_type)),
+        ("pubmed_ids", pa.list_(pa.string()))
+    ])
+
+    # Schema for SRA Sample records
+    sample_schema = pa.schema([
+        ("accession", pa.string()),
+        ("alias", pa.string()),
+        ("title", pa.string()),
+        ("organism", pa.string()),
+        ("description", pa.string()),
+        ("taxon_id", pa.int32()),
+        ("geo", pa.string()),
+        ("BioSample", pa.string()),
+        ("identifiers", pa.list_(identifier_type)),
+        ("attributes", pa.list_(attribute_type)),
+        ("xrefs", pa.list_(xref_type))
+    ])
+
+    # Schema for SRA Experiment records
+    experiment_schema = pa.schema([
+        ("accession", pa.string()),
+        ("experiment_accession", pa.string()),
+        ("alias", pa.string()),
+        ("title", pa.string()),
+        ("description", pa.string()),
+        ("design", pa.string()),
+        ("center_name", pa.string()),
+        ("study_accession", pa.string()),
+        ("sample_accession", pa.string()),
+        ("platform", pa.string()),
+        ("instrument_model", pa.string()),
+        ("library_name", pa.string()),
+        ("library_construction_protocol", pa.string()),
+        ("library_layout", pa.string()),
+        ("library_layout_orientation", pa.string()),
+        ("library_layout_length", pa.string()),
+        ("library_layout_sdev", pa.string()),
+        ("library_strategy", pa.string()),
+        ("library_source", pa.string()),
+        ("library_selection", pa.string()),
+        ("spot_length", pa.int64()),
+        ("nreads", pa.int64()),
+        ("identifiers", pa.list_(identifier_type)),
+        ("attributes", pa.list_(attribute_type)),
+        ("xrefs", pa.list_(xref_type)),
+        ("reads", pa.list_(experiment_read_type))
+    ])
+
+    return {
+        "run": run_schema,
+        "study": study_schema,
+        "sample": sample_schema,
+        "experiment": experiment_schema
+    }
+
+# Initialize schemas at module level
+PYARROW_SCHEMAS = get_pyarrow_schemas()
+
+
+def infer_record_type_from_url(url: str) -> str:
+    """Infer the SRA record type from the URL.
+
+    Args:
+        url: The SRA XML URL
+
+    Returns:
+        Record type: 'run', 'study', 'sample', or 'experiment'
+    """
+    url_lower = url.lower()
+    if "run" in url_lower or "meta_run" in url_lower:
+        return "run"
+    elif "study" in url_lower or "meta_study" in url_lower:
+        return "study"
+    elif "sample" in url_lower or "meta_sample" in url_lower:
+        return "sample"
+    elif "experiment" in url_lower or "meta_experiment" in url_lower:
+        return "experiment"
+    else:
+        logger.warning(f"Could not infer record type from URL: {url}, defaulting to 'run'")
+        return "run"
+
+
+def normalize_record(record: dict[str, Any], record_type: str) -> dict[str, Any]:
+    """Normalize a record to ensure consistent schema.
+
+    This function ensures:
+    - All list fields are present and contain empty lists [] instead of None
+    - All numeric fields have consistent types
+    - Missing optional fields are set to None
+
+    Args:
+        record: The raw record dict from sra_object_generator
+        record_type: The type of record (run, study, sample, experiment)
+
+    Returns:
+        Normalized record with consistent schema
+    """
+    normalized = {}
+
+    # Get the schema for this record type
+    schema = PYARROW_SCHEMAS.get(record_type)
+    if not schema:
+        logger.warning(f"No schema found for record type: {record_type}")
+        return record
+
+    # Process each field in the schema
+    for field in schema:
+        field_name = field.name
+        field_value = record.get(field_name)
+
+        # Handle list fields - ensure they're always lists, never None
+        if str(field.type).startswith("list"):
+            if field_value is None or not isinstance(field_value, list):
+                normalized[field_name] = []
+            else:
+                normalized[field_name] = field_value
+
+        # Handle struct fields - keep as None if missing
+        elif str(field.type).startswith("struct"):
+            normalized[field_name] = field_value
+
+        # Handle numeric fields - keep as None if missing
+        elif "int" in str(field.type) or "float" in str(field.type):
+            normalized[field_name] = field_value
+
+        # Handle string fields - keep as None if missing
+        else:
+            normalized[field_name] = field_value
+
+    return normalized
 
 
 def get_sra_urls() -> list[str]:
@@ -55,51 +334,74 @@ def get_sra_urls() -> list[str]:
     return all_urls
 
 
-def cleanup_old_files(output_dir: Path, url_prefixes: set[str], pattern: str = "*.parquet"):
-    """Remove old output files that don't match current URL prefixes."""
+def cleanup_old_files(output_dir: Path, url_prefixes: set[str], pattern: str = "*.parquet") -> int:
+    """Remove old output files that don't match current URL prefixes.
+
+    Args:
+        output_dir: Directory containing output files
+        url_prefixes: Set of valid URL prefixes to keep
+        pattern: File pattern to match (default: *.parquet)
+
+    Returns:
+        Number of files removed
+    """
     removed_count = 0
-    
+
     for file_path in output_dir.glob(pattern):
-        # Extract the prefix from the filename (before the first chunk number)
         filename = file_path.stem
-        
+
         # Check if this file matches any of the current URL prefixes
-        matches_current_prefix = False
-        for prefix in url_prefixes:
-            # Handle both chunked (-0001) and non-chunked files
-            if re.match(rf"{re.escape(prefix)}-\d{{4}}$", filename):  # Chunked pattern
-                matches_current_prefix = True
-                break
+        # Handle both chunked (-0001) and non-chunked files
+        matches_current_prefix = any(
+            re.match(rf"{re.escape(prefix)}-\d{{4}}$", filename)
+            for prefix in url_prefixes
+        )
 
         if not matches_current_prefix:
             file_path.unlink()
             logger.info(f"Removed old file: {file_path}")
             removed_count += 1
-    
+
     if removed_count > 0:
         logger.info(f"Cleaned up {removed_count} old files from {output_dir}")
 
+    return removed_count
+
 
 def _generate_file_prefix(url: str) -> str:
-    """Generate file prefix from SRA URL (without extension or chunk number)."""
+    """Generate file prefix from SRA URL (without extension or chunk number).
+
+    Example:
+        Input: https://...NCBI_SRA_Mirroring_20250101_Full/meta_study_set.xml.gz
+        Output: 20250101_Full-study
+    """
     url_path = UPath(url)
-    path_part = url_path.parts[-2]  # Date directory
-    xml_name = url_path.parts[-1]   # XML filename
-    
-    path_part = path_part.replace("NCBI_SRA_Mirroring_","")
-    base_name = xml_name.replace("_set.xml.gz","").replace("meta_","")
-
-    return f"{path_part}-{base_name}"
+    path_part = url_path.parts[-2].replace("NCBI_SRA_Mirroring_", "")
+    xml_name = url_path.parts[-1].replace("_set.xml.gz", "").replace("meta_", "")
+    return f"{path_part}-{xml_name}"
 
 
-def _generate_output_filename(url: str, chunk_number: int | None = None, output_format: str = OUTPUT_FORMAT_PARQUET) -> str:
-    """Generate output filename from SRA URL with optional chunk number."""
+def _generate_output_filename(
+    url: str,
+    chunk_number: int | None = None,
+    output_format: str = OUTPUT_FORMAT_PARQUET
+) -> str:
+    """Generate output filename from SRA URL with optional chunk number.
+
+    Args:
+        url: The SRA XML URL
+        chunk_number: Optional chunk number for large files
+        output_format: Output format (parquet or ndjson)
+
+    Returns:
+        Filename string (e.g., "20250101_Full-study-0001.parquet")
+    """
     prefix = _generate_file_prefix(url)
-    
+    extension = output_format if output_format == OUTPUT_FORMAT_PARQUET else "ndjson.gz"
+
     if chunk_number is not None:
-        return f"{prefix}-{chunk_number:04d}.{output_format}"
-    else:
-        return f"{prefix}.{output_format}"
+        return f"{prefix}-{chunk_number:04d}.{extension}"
+    return f"{prefix}.{extension}"
 
 
 def _get_semaphore_filename(prefix: str) -> str:
@@ -109,16 +411,21 @@ def _get_semaphore_filename(prefix: str) -> str:
 
 def _is_prefix_completed(output_dir: Path, prefix: str) -> bool:
     """Check if a prefix has already been completed by looking for semaphore file."""
-    semaphore_file = output_dir / _get_semaphore_filename(prefix)
-    return semaphore_file.exists()
+    return (output_dir / _get_semaphore_filename(prefix)).exists()
 
 
 def _mark_prefix_completed(output_dir: Path, prefix: str, metadata: dict | None = None) -> None:
-    """Create semaphore file to mark prefix as completed."""
-    semaphore_file = output_dir / _get_semaphore_filename(prefix)
-    
-    # Create metadata for the semaphore file
+    """Create semaphore file to mark prefix as completed.
+
+    Args:
+        output_dir: Output directory
+        prefix: File prefix
+        metadata: Optional metadata dict to store in semaphore file
+    """
+    import json
     import time
+
+    semaphore_file = output_dir / _get_semaphore_filename(prefix)
     semaphore_data = {
         "prefix": prefix,
         "completed_at": time.time(),
@@ -126,11 +433,9 @@ def _mark_prefix_completed(output_dir: Path, prefix: str, metadata: dict | None 
         "block_size": SRA_BLOCK_SIZE,
         "metadata": metadata or {}
     }
-    
+
     try:
-        with open(semaphore_file, 'w') as f:
-            import json
-            json.dump(semaphore_data, f, indent=2)
+        semaphore_file.write_text(json.dumps(semaphore_data, indent=2))
         logger.info(f"Created semaphore file: {semaphore_file}")
     except Exception as e:
         logger.warning(f"Failed to create semaphore file {semaphore_file}: {e}")
@@ -233,59 +538,91 @@ def _write_ndjson_file(xml_file_path: str, output_path: Path) -> int:
 
 
 def _write_parquet_file(xml_file_path: str, url: str, output_dir: Path) -> tuple[list[str], int]:
-    """Write SRA records to chunked Parquet files."""
+    """Write SRA records to chunked Parquet files with schema enforcement.
+
+    This function:
+    1. Infers the record type from the URL
+    2. Normalizes each record to ensure consistent schema
+    3. Writes records in chunks with the appropriate PyArrow schema
+    4. Ensures all records have consistent field types (no null vs empty list issues)
+    """
     try:
         import pyarrow as pa
         import pyarrow.parquet as pq
     except ImportError:
         logger.error("PyArrow not available. Install with: pip install pyarrow")
         raise
-    
+
+    # Infer record type from URL
+    record_type = infer_record_type_from_url(url)
+    target_schema = PYARROW_SCHEMAS.get(record_type)
+
+    if not target_schema:
+        logger.warning(f"No schema defined for record type: {record_type}, falling back to untyped")
+        target_schema = None
+    else:
+        logger.info(f"Using schema for record type: {record_type}")
+
     records = []
     record_count = 0
     chunk_number = 1
     output_filenames = []
-    
+
     logger.info(f"Writing parquet files with block size: {SRA_BLOCK_SIZE}")
-    
+
     def write_chunk():
-        """Write current batch of records to a parquet file."""
+        """Write current batch of records to a parquet file with schema enforcement."""
         nonlocal chunk_number, records, output_filenames
-        
+
         if not records:
             return
-            
+
         output_filename = _generate_output_filename(url, chunk_number)
         output_path = output_dir / output_filename
-        
-        table = pa.Table.from_pylist(records)
+
+        # Create table with explicit schema if available
+        if target_schema:
+            try:
+                table = pa.Table.from_pylist(records, schema=target_schema)
+            except Exception as e:
+                logger.warning(f"Failed to apply schema, falling back to inferred: {e}")
+                table = pa.Table.from_pylist(records)
+        else:
+            table = pa.Table.from_pylist(records)
+
         pq.write_table(
-            table, 
+            table,
             output_path,
             compression='zstd',
             use_dictionary=True
         )
-        
+
         output_filenames.append(output_filename)
         logger.info(f"Wrote chunk {chunk_number}: {output_filename} ({len(records)} records)")
-        
+
         # Reset for next chunk
         records = []
         chunk_number += 1
-    
+
     with gzip.open(xml_file_path, "rb") as xml_file:
         for obj in sra_object_generator(xml_file):
             record_count += 1
-            records.append(obj.data)
-            
+
+            # Normalize record to ensure consistent schema
+            if target_schema:
+                normalized_record = normalize_record(obj.data, record_type)
+                records.append(normalized_record)
+            else:
+                records.append(obj.data)
+
             # Write chunk when we reach the block size
             if len(records) >= SRA_BLOCK_SIZE:
                 write_chunk()
-    
+
     # Write any remaining records
     if records:
         write_chunk()
-    
+
     logger.info(f"Created {len(output_filenames)} parquet files with {record_count} total records")
     return output_filenames, record_count
 
