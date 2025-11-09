@@ -7,13 +7,62 @@ import httpx
 import orjson
 from upath import UPath
 import shutil
-import gzip
 from ..config import settings
 import click
 from loguru import logger
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 output_dir = str(UPath(settings.PUBLISH_DIRECTORY) / "ebi_biosample")
+
+
+def get_biosample_schema() -> pa.Schema:
+    """Get the PyArrow schema for EBI BioSample records.
+
+    Returns a schema that matches the structure of EBI BioSample API responses
+    with flattened characteristics.
+    """
+    return pa.schema([
+        pa.field("accession", pa.string()),
+        pa.field("name", pa.string()),
+        pa.field("update", pa.string()),
+        pa.field("release", pa.string()),
+        pa.field("create", pa.string()),
+        pa.field("taxId", pa.int64()),
+        pa.field("characteristics", pa.list_(pa.struct([
+            pa.field("text", pa.string()),
+            pa.field("ontologyTerms", pa.list_(pa.string())),
+            pa.field("unit", pa.string()),
+            pa.field("characteristic", pa.string())
+        ]))),
+        pa.field("organization", pa.list_(pa.struct([
+            pa.field("Name", pa.string()),
+            pa.field("Role", pa.string()),
+            pa.field("Address", pa.string()),
+            pa.field("URI", pa.string()),
+            pa.field("Email", pa.string())
+        ]))),
+        pa.field("contact", pa.list_(pa.struct([
+            pa.field("Name", pa.string()),
+            pa.field("Role", pa.string()),
+            pa.field("Email", pa.string())
+        ]))),
+        pa.field("publications", pa.list_(pa.struct([
+            pa.field("pubmed_id", pa.string()),
+            pa.field("doi", pa.string())
+        ]))),
+        pa.field("externalReferences", pa.list_(pa.struct([
+            pa.field("url", pa.string()),
+            pa.field("duo", pa.list_(pa.string()))
+        ]))),
+        pa.field("_links", pa.struct([
+            pa.field("self", pa.struct([pa.field("href", pa.string())])),
+            pa.field("curationLinks", pa.struct([pa.field("href", pa.string())])),
+            pa.field("samples", pa.struct([pa.field("href", pa.string())])),
+            pa.field("curationLink", pa.struct([pa.field("href", pa.string())]))
+        ]))
+    ])
 
 
 def get_filename(
@@ -24,11 +73,10 @@ def get_filename(
 ) -> str:
     """Get the filename for a given date range.
 
-    Currently, this is a GCS path. The final filename looks like
-    `biosamples-2021-01-01--2021-01-31.ndjson.gz`, for example.
+    The final filename looks like
+    `biosamples-2021-01-01--2021-01-01--daily.parquet`, for example.
     """
-    # base = f"{bucket}/{path}/biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.ndjson.gz"
-    base = f"{output_directory}/biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.ndjson.gz"
+    base = f"{output_directory}/biosamples-{start_date.strftime('%Y-%m-%d')}--{end_date.strftime('%Y-%m-%d')}--daily.parquet"
     if tmp:
         base += ".tmp"
     return base
@@ -54,10 +102,8 @@ class SampleFetcher:
         self.base_url = BASEURL
         self.full_url = None
         self.any_samples = False
-        self.upath = UPath(settings.PUBLISH_DIRECTORY) / get_filename(
-            start_date, end_date, tmp=True, output_directory=output_directory
-        )
-        self.fh = gzip.open(get_filename(start_date, end_date, tmp=True, output_directory=output_directory), "wb")
+        self.processed_count = 0
+        self.samples_buffer = []  # Buffer samples in memory for Parquet writing
 
     def date_filter_string(self) -> str:
         """Get the filter string for a given date range.
@@ -84,7 +130,7 @@ class SampleFetcher:
             "size": self.size,
             "filter": filt,
         }
-
+        logger.debug(f"Performing request to EBI API: {self.full_url if self.full_url is not None else self.base_url} with params {params}")
         async with httpx.AsyncClient() as client:
             if self.full_url is not None:
                 response = await client.get(self.full_url, timeout=40)
@@ -118,69 +164,61 @@ class SampleFetcher:
                 else:
                     self.completed()
                     break
-            except KeyError:
-                pass
+            except KeyError: # no more samples
+                self.completed()
+                break
 
     async def process(self):
         """Process the samples from the EBI API.
 
-        This function fetches samples from the EBI API and writes them
-        to a file. It runs in a loop until there are no more samples
+        This function fetches samples from the EBI API and buffers them
+        in memory. It runs in a loop until there are no more samples
         to fetch.
         """
-        metadata = {"record_count": 0}
+        self.processed_count = 0
 
         async for sample in self.fetch_next_set():
-            self.fh.write(orjson.dumps(sample) + b"\n")
-            metadata["record_count"] += 1
-            if metadata["record_count"] % 10000 == 0:
-                logger.info(f"Fetched {metadata['record_count']} samples so far")
+            self.samples_buffer.append(sample)
+            self.processed_count += 1
+            if self.processed_count % 1000 == 0:
+                logger.debug(f"Fetched {self.processed_count} samples so far for date range {self.start_date} to {self.end_date}")
 
     def completed(self):
         """Finalize the fetching process.
 
         This function is called when there are no more samples to fetch.
-        It is mainly here to close the file handle.
         """
         logger.info("Completed fetching samples")
-        self.fh.close()
-        logger.info(self)
-        pass
 
 
 def get_date_ranges(start_date_str: str, end_date_str: str) -> Iterable[tuple]:
     """Get date ranges for a given start and end date.
 
-    Given a start and end date, returns a list of tuples representing the start and end dates of each month in the range.
+    Given a start and end date, returns a list of tuples representing daily date ranges.
 
     :param start_date_str: The start date in 'YYYY-MM-DD' format
     :param end_date_str: The end date in 'YYYY-MM-DD' format
-    :return: List of tuples, each containing the start and end date of a month in the range
+    :return: Iterator of tuples, each containing a single day (same date for start and end)
     """
     # Convert strings to datetime objects
     start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
     end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
 
-    date_ranges = []
-    current_start = start_date.replace(day=1)
+    current_date = start_date
 
-    while current_start <= end_date:
-        # Calculate the end of the current month
-        current_end = (current_start + relativedelta(months=1)) - timedelta(days=1)
-
-        date_ranges.append((current_start.date(), current_end.date()))
-        yield (current_start.date(), current_end.date())
-        # Move to the first day of the next month
-        current_start = current_start + relativedelta(months=1)
+    while current_date <= end_date:
+        # Yield single day range (start and end are the same)
+        yield (current_date.date(), current_date.date())
+        # Move to next day
+        current_date = current_date + timedelta(days=1)
 
 
 async def process_by_dates(start_date, end_date, output_directory: str = output_dir):
     """Process single date range.
 
     This function fetches samples from the EBI API for a given date range
-    and writes them to a file. The file is then moved to its final location.
-    A semaphore file is created to indicate that the process is complete
-    for the given date range.
+    and writes them to a Parquet file. A semaphore file is created to indicate
+    that the process is complete for the given date range.
     """
     fetcher = SampleFetcher(
         cursor="*",
@@ -190,18 +228,37 @@ async def process_by_dates(start_date, end_date, output_directory: str = output_
         output_directory=output_directory,
     )
     await fetcher.process()
-    if fetcher.any_samples:
-        shutil.move(
-            get_filename(start_date, end_date, tmp=True, output_directory=output_directory),
-            get_filename(start_date, end_date, tmp=False, output_directory=output_directory),
-        )
-    else:
-        import os
 
-        os.unlink(get_filename(start_date, end_date, tmp=True, output_directory=output_directory))
-    # touch filename with .done extension
-    UPath(get_filename(start_date, end_date, tmp=False, output_directory=output_directory) + ".done").touch()
-    logger.info(f"Finished processing {start_date} to {end_date}")
+    tmp_filename = get_filename(start_date, end_date, tmp=True, output_directory=output_directory)
+    final_filename = get_filename(start_date, end_date, tmp=False, output_directory=output_directory)
+
+    if fetcher.any_samples:
+        # Write samples to Parquet file
+        schema = get_biosample_schema()
+        table = pa.Table.from_pylist(fetcher.samples_buffer, schema=schema)
+        pq.write_table(
+            table,
+            tmp_filename,
+            compression="zstd",
+            compression_level=9
+        )
+
+        # Move temp file to final location
+        shutil.move(tmp_filename, final_filename)
+        # Create .done file next to the data file
+        UPath(final_filename + ".done").touch()
+        logger.info(f"Finished processing {start_date} to {end_date}: {fetcher.processed_count} samples extracted")
+    else:
+        # No samples found - create .done with special marker
+        # Create .done file to mark day as processed (even though no data)
+        # This prevents re-checking empty days
+        done_file = UPath(final_filename + ".done")
+        done_file.touch()
+        # Write metadata to indicate no samples
+        done_file.write_text("NO_SAMPLES\n")
+        logger.info(f"Finished processing {start_date} to {end_date}: No samples found")
+    UPath(tmp_filename).unlink(missing_ok=True)
+    
 
 
 async def limited_process(semaphore, start_date, end_date, output_directory: str = output_dir):
@@ -212,11 +269,13 @@ async def limited_process(semaphore, start_date, end_date, output_directory: str
 
 async def main(output_directory: str = output_dir):
     start = "2021-01-01"
-    end = datetime.now().strftime("%Y-%m-%d")
-    current_date = datetime.now().date()
-    semaphore = anyio.Semaphore(20)  # Limit to 10 concurrent tasks
+    # Extract up to yesterday to avoid partial day data
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    end = yesterday
+    semaphore = anyio.Semaphore(20)  # Limit to 20 concurrent tasks
 
     logger.info(f"Starting EBI Biosample extraction from {start} to {end}")
+    logger.info(f"Extracting up to yesterday to ensure complete days")
     logger.info(f"Output directory: {output_directory}")
 
     async with anyio.create_task_group() as task_group:
