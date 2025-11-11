@@ -1,0 +1,66 @@
+# --- Gateway Connection ---
+gateways:
+  ducklake:
+    connection:
+      type: duckdb
+      catalogs:
+        ducklake:
+          type: ducklake
+          path: catalog.ducklake
+          data_path: /data/davsean/omicidx_ducklake_data
+          data_inlining_row_limit: 10
+
+  db:
+    connection:
+      type: duckdb
+      catalogs:
+        db:
+          type: duckdb
+          path: db.duckdb
+          data_path: /data/davsean/omicidx_duckdb_data
+
+# connection:
+#       # For more information on configuring the connection to your execution engine, visit:
+#       # https://sqlmesh.readthedocs.io/en/stable/reference/configuration/#connection
+#       # https://sqlmesh.readthedocs.io/en/stable/integrations/engines/duckdb/#connection-options
+#       type: duckdb
+#       database: db.db
+#       # concurrent_tasks: 1
+#       # register_comments: True
+#       # pre_ping: False
+#       # pretty_sql: False
+#       # schema_differ_overrides: 
+#       # catalogs: 
+#       # extensions: 
+#       # connector_config: 
+#       # secrets: 
+#       # filesystems: 
+#       # token: 
+
+default_gateway: db
+
+# --- Model Defaults ---
+# https://sqlmesh.readthedocs.io/en/stable/reference/model_configuration/#model-defaults
+
+model_defaults:
+  dialect: duckdb
+  start: 2001-01-01 # Start date for backfill history
+  cron: '@daily'    # Run models daily at 12am UTC (can override per model)
+
+# --- Variables ---
+# Use environment variables for configurable paths
+# Set via: export OMICIDX_DATA_ROOT=/data/davsean/omicidx_root
+# Or create a .env file in the sqlmesh directory
+variables:
+  data_root: /data/davsean/omicidx_root
+
+# --- Linting Rules ---
+# Enforce standards for your team
+# https://sqlmesh.readthedocs.io/en/stable/guides/linter/
+
+linter:
+  enabled: true
+  rules:
+    # Disabled for models reading from dynamic file sources (read_ndjson_auto, read_parquet, etc.)
+    # - ambiguousorinvalidcolumn
+    - invalidselectstarexpansion

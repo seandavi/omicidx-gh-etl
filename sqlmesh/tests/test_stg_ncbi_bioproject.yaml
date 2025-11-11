@@ -1,0 +1,59 @@
+test_stg_ncbi_bioproject:
+  model: bronze.stg_ncbi_bioproject
+  inputs:
+    raw.src_ncbi_bioproject:
+      columns:
+        accession: VARCHAR
+        title: VARCHAR
+        name: VARCHAR
+        description: VARCHAR
+        release_date: VARCHAR
+        publications: VARCHAR[]
+        locus_tags: VARCHAR[]
+        data_types: VARCHAR[]
+        external_links: VARCHAR[]
+      rows:
+        - accession: PRJNA3
+          title: Causes Lyme disease
+          name: Borreliella burgdorferi B31
+          description: null
+          release_date: "2001-01-09T00:00:00Z"
+          publications: []
+          locus_tags: []
+          data_types: []
+          external_links: []
+        - accession: PRJNA4
+          title: Causes periodontal disease, gum inflamation
+          name: Treponema denticola ATCC 35405
+          description: null
+          release_date: "2004-02-03T00:00:00Z"
+          publications: []
+          locus_tags: []
+          data_types: []
+          external_links: []
+  vars:
+    start_ds: 2001-01-09
+    end_ds: 2004-02-03
+  outputs:
+    query:
+      rows:
+        - title: Causes Lyme disease
+          description: null
+          name: Borreliella burgdorferi B31
+          accession: PRJNA3
+          publications: []
+          locus_tags: []
+          release_timestamp: "2001-01-09 00:00:00.000"
+          release_date_only: 2001-01-09
+          data_types: []
+          external_links: []
+        - title: Causes periodontal disease, gum inflamation
+          description: null
+          name: Treponema denticola ATCC 35405
+          accession: PRJNA4
+          publications: []
+          locus_tags: []
+          release_timestamp: "2004-02-03 00:00:00.000"
+          release_date_only: 2004-02-03
+          data_types: []
+          external_links: []

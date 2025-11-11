@@ -1,0 +1,74 @@
+test_stg_ebi_biosample:
+  model: bronze.stg_ebi_biosample
+  inputs:
+    raw.src_ebi_biosample:
+      columns:
+        accession: VARCHAR
+        name: VARCHAR
+        update: VARCHAR
+        release: VARCHAR
+        create: VARCHAR
+        taxId: BIGINT
+        characteristics: VARCHAR[]
+        organization: VARCHAR[]
+        contact: VARCHAR[]
+        publications: VARCHAR[]
+        externalReferences: VARCHAR[]
+        _links: VARCHAR
+      rows:
+        - accession: SAMEA7996633
+          name: DNA
+          update: "2021-01-07T00:22:30.866Z"
+          release: "2021-01-05T14:22:47.714Z"
+          create: "2021-01-06T14:22:48.249Z"
+          taxId: null
+          characteristics: []
+          organization: []
+          contact: []
+          publications: []
+          externalReferences: []
+          _links: null
+        - accession: SAMEA7996639
+          name: DLL_CTR
+          update: "2021-01-11T09:03:55.569Z"
+          release: "2021-01-07T17:02:07.095Z"
+          create: "2021-01-08T17:02:07.447Z"
+          taxId: 9606
+          characteristics: []
+          organization: []
+          contact: []
+          publications: []
+          externalReferences: []
+          _links: null
+  vars:
+    start_ds: 2021-01-07
+    end_ds: 2021-01-11
+  outputs:
+    query:
+      rows:
+        - accession: SAMEA7996633
+          name: DNA
+          update_date: 2021-01-07
+          update_timestamp: "2021-01-07 00:22:30.866"
+          release_timestamp: "2021-01-05 14:22:47.714"
+          create_timestamp: "2021-01-06 14:22:48.249"
+          taxId: null
+          characteristics: []
+          organization: []
+          contact: []
+          publications: []
+          externalReferences: []
+          _links: null
+        - accession: SAMEA7996639
+          name: DLL_CTR
+          update_date: 2021-01-11
+          update_timestamp: "2021-01-11 09:03:55.569"
+          release_timestamp: "2021-01-07 17:02:07.095"
+          create_timestamp: "2021-01-08 17:02:07.447"
+          taxId: 9606
+          characteristics: []
+          organization: []
+          contact: []
+          publications: []
+          externalReferences: []
+          _links: null

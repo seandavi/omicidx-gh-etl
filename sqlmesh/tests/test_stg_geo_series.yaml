@@ -1,0 +1,132 @@
+test_stg_geo_series:
+  model: bronze.stg_geo_series
+  inputs:
+    raw.src_geo_series:
+      columns:
+        accession: VARCHAR
+        title: VARCHAR
+        status: VARCHAR
+        submission_date: DATE
+        last_update_date: DATE
+        overall_design: VARCHAR
+        summary: VARCHAR
+        subseries: VARCHAR[]
+        bioprojects: VARCHAR[]
+        sra_studies: VARCHAR[]
+        contact: VARCHAR
+        type: VARCHAR[]
+        relation: VARCHAR[]
+        pubmed_id: BIGINT[]
+        sample_id: VARCHAR[]
+        sample_taxid: BIGINT[]
+        sample_organism: VARCHAR[]
+        platform_id: VARCHAR[]
+        platform_taxid: BIGINT[]
+        platform_organism: VARCHAR[]
+        data_processing: VARCHAR
+        description: VARCHAR
+        supplemental_files: VARCHAR[]
+        contributor: VARCHAR[]
+      rows:
+        - accession: GSE1
+          title: NHGRI_Melanoma_class
+          status: Public on Jan 22 2001
+          submission_date: 2001-01-22
+          last_update_date: 2019-02-14
+          overall_design: null
+          summary: null
+          subseries: []
+          bioprojects: []
+          sra_studies: []
+          contact: null
+          type: []
+          relation: []
+          pubmed_id: []
+          sample_id: []
+          sample_taxid: []
+          sample_organism: []
+          platform_id: []
+          platform_taxid: []
+          platform_organism: []
+          data_processing: null
+          description: null
+          supplemental_files: []
+          contributor: []
+        - accession: GSE10
+          title: eye-SAGE
+          status: Public on Oct 03 2001
+          submission_date: 2001-10-03
+          last_update_date: 2012-04-18
+          overall_design: null
+          summary: null
+          subseries: []
+          bioprojects: []
+          sra_studies: []
+          contact: null
+          type: []
+          relation: []
+          pubmed_id: []
+          sample_id: []
+          sample_taxid: []
+          sample_organism: []
+          platform_id: []
+          platform_taxid: []
+          platform_organism: []
+          data_processing: null
+          description: null
+          supplemental_files: []
+          contributor: []
+  vars:
+    start_ds: 2012-04-18
+    end_ds: 2019-02-14
+  outputs:
+    query:
+      rows:
+        - accession: GSE1
+          title: NHGRI_Melanoma_class
+          status: Public on Jan 22 2001
+          submission_date: 2001-01-22
+          last_update_date: 2019-02-14
+          overall_design: null
+          summary: null
+          subseries: []
+          bioprojects: []
+          sra_studies: []
+          contact: null
+          type: []
+          relation: []
+          pubmed_id: []
+          sample_id: []
+          sample_taxid: []
+          sample_organism: []
+          platform_id: []
+          platform_taxid: []
+          platform_organism: []
+          data_processing: null
+          description: null
+          supplemental_files: []
+          contributor: []
+        - accession: GSE10
+          title: eye-SAGE
+          status: Public on Oct 03 2001
+          submission_date: 2001-10-03
+          last_update_date: 2012-04-18
+          overall_design: null
+          summary: null
+          subseries: []
+          bioprojects: []
+          sra_studies: []
+          contact: null
+          type: []
+          relation: []
+          pubmed_id: []
+          sample_id: []
+          sample_taxid: []
+          sample_organism: []
+          platform_id: []
+          platform_taxid: []
+          platform_organism: []
+          data_processing: null
+          description: null
+          supplemental_files: []
+          contributor: []

@@ -1,0 +1,132 @@
+test_stg_geo_samples:
+  model: bronze.stg_geo_samples
+  inputs:
+    raw.src_geo_samples:
+      columns:
+        accession: VARCHAR
+        title: VARCHAR
+        status: VARCHAR
+        submission_date: DATE
+        last_update_date: DATE
+        type: VARCHAR
+        biosample: VARCHAR
+        platform_id: VARCHAR
+        tag_count: BIGINT
+        tag_length: DOUBLE
+        hyb_protocol: VARCHAR
+        channel_count: BIGINT
+        scan_protocol: VARCHAR
+        data_row_count: BIGINT
+        library_source: VARCHAR
+        sra_experiment: VARCHAR
+        data_processing: VARCHAR
+        anchor: VARCHAR
+        description: VARCHAR
+        contact: VARCHAR
+        overall_design: VARCHAR
+        supplemental_files: VARCHAR[]
+        channels: VARCHAR[]
+        contributor: VARCHAR[]
+      rows:
+        - accession: GSM22600
+          title: Mg++ deficient 11
+          status: Public on Aug 11 2006
+          submission_date: 2004-05-10
+          last_update_date: 2005-05-28
+          type: RNA
+          biosample: null
+          platform_id: GPL85
+          tag_count: null
+          tag_length: null
+          hyb_protocol: null
+          channel_count: 1
+          scan_protocol: null
+          data_row_count: 8799
+          library_source: null
+          sra_experiment: null
+          data_processing: null
+          anchor: null
+          description: "Sample from liver"
+          contact: null
+          overall_design: null
+          supplemental_files: []
+          channels: []
+          contributor: []
+        - accession: GSM22601
+          title: Mg++ deficient 12
+          status: Public on Aug 11 2006
+          submission_date: 2004-05-10
+          last_update_date: 2005-05-28
+          type: RNA
+          biosample: null
+          platform_id: GPL85
+          tag_count: null
+          tag_length: null
+          hyb_protocol: null
+          channel_count: 1
+          scan_protocol: null
+          data_row_count: 8800
+          library_source: null
+          sra_experiment: null
+          data_processing: null
+          anchor: null
+          description: "Another liver sample"
+          contact: null
+          overall_design: null
+          supplemental_files: []
+          channels: []
+          contributor: []
+  vars:
+    start_ds: 2005-05-28
+    end_ds: 2005-05-28
+  outputs:
+    query:
+      rows:
+        - accession: GSM22600
+          title: Mg++ deficient 11
+          status: Public on Aug 11 2006
+          submission_date: 2004-05-10
+          last_update_date: 2005-05-28
+          type: RNA
+          biosample: null
+          platform_id: GPL85
+          tag_count: null
+          tag_length: null
+          hyb_protocol: null
+          channel_count: 1
+          scan_protocol: null
+          data_row_count: 8799
+          library_source: null
+          sra_experiment: null
+          data_processing: null
+          anchor: null
+          description: "Sample from liver"
+          contact: null
+          overall_design: null
+          supplemental_files: []
+          channels: []
+          contributor: []
+        - accession: GSM22601
+          title: Mg++ deficient 12
+          status: Public on Aug 11 2006
+          submission_date: 2004-05-10
+          last_update_date: 2005-05-28
+          type: RNA
+          biosample: null
+          platform_id: GPL85
+          tag_count: null
+          tag_length: null
+          hyb_protocol: null
+          channel_count: 1
+          scan_protocol: null
+          data_row_count: 8800
+          library_source: null
+          sra_experiment: null
+          data_processing: null
+          anchor: null
+          description: "Another liver sample"
+          contact: null
+          overall_design: null
+          supplemental_files: []
+          channels: []
+          contributor: []

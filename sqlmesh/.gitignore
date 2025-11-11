@@ -1,0 +1,15 @@
+# SQLMesh runtime files
+.env
+.pytest_cache/
+__pycache__/
+
+# DuckDB files
+*.duckdb
+*.duckdb.wal
+
+# SQLMesh state
+.sqlmesh/
+
+.cache/
+
+logs/

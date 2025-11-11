@@ -1,0 +1,102 @@
+test_stg_geo_platforms:
+  model: bronze.stg_geo_platforms
+  inputs:
+    raw.src_geo_platforms:
+      columns:
+        accession: VARCHAR
+        title: VARCHAR
+        status: VARCHAR
+        submission_date: DATE
+        last_update_date: DATE
+        organism: VARCHAR
+        technology: VARCHAR
+        data_row_count: BIGINT
+        contact: VARCHAR
+        summary: VARCHAR
+        sample_id: VARCHAR[]
+        series_id: VARCHAR[]
+        description: VARCHAR
+        distribution: VARCHAR
+        manufacturer: VARCHAR[]
+        contributor: VARCHAR[]
+        relation: VARCHAR[]
+        manufacture_protocol: VARCHAR
+      rows:
+        - accession: GPL10
+          title: Human Unigene I, part 2
+          status: Public on May 31 2001
+          submission_date: 2001-05-30
+          last_update_date: 2005-10-28
+          organism: Homo sapiens
+          technology: spotted DNA/cDNA
+          data_row_count: 36864
+          contact: null
+          summary: null
+          sample_id: []
+          series_id: []
+          description: null
+          distribution: null
+          manufacturer: []
+          contributor: []
+          relation: []
+          manufacture_protocol: null
+        - accession: GPL100
+          title: "[Hu35KsubC] Affymetrix Human 35K SubC Array"
+          status: Public on Mar 11 2002
+          submission_date: 2002-02-19
+          last_update_date: 2009-06-03
+          organism: Homo sapiens
+          technology: in situ oligonucleotide
+          data_row_count: 8928
+          contact: null
+          summary: null
+          sample_id: []
+          series_id: []
+          description: null
+          distribution: null
+          manufacturer: []
+          contributor: []
+          relation: []
+          manufacture_protocol: null
+  vars:
+    start_ds: 2005-10-28
+    end_ds: 2009-06-03
+  outputs:
+    query:
+      rows:
+        - accession: GPL10
+          title: Human Unigene I, part 2
+          status: Public on May 31 2001
+          submission_date: 2001-05-30
+          last_update_date: 2005-10-28
+          organism: Homo sapiens
+          technology: spotted DNA/cDNA
+          data_row_count: 36864
+          contact: null
+          summary: null
+          sample_id: []
+          series_id: []
+          description: null
+          distribution: null
+          manufacturer: []
+          contributor: []
+          relation: []
+          manufacture_protocol: null
+        - accession: GPL100
+          title: "[Hu35KsubC] Affymetrix Human 35K SubC Array"
+          status: Public on Mar 11 2002
+          submission_date: 2002-02-19
+          last_update_date: 2009-06-03
+          organism: Homo sapiens
+          technology: in situ oligonucleotide
+          data_row_count: 8928
+          contact: null
+          summary: null
+          sample_id: []
+          series_id: []
+          description: null
+          distribution: null
+          manufacturer: []
+          contributor: []
+          relation: []
+          manufacture_protocol: null
