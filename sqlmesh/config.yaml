@@ -17,7 +17,7 @@ gateways:
         db:
           type: duckdb
           path: db.duckdb
-          data_path: /data/davsean/omicidx_duckdb_data
+          data_path: {{ env_var('OMICIDX_DATA_ROOT') }}
 
 # connection:
 #       # For more information on configuring the connection to your execution engine, visit:
@@ -52,7 +52,7 @@ model_defaults:
 # Set via: export OMICIDX_DATA_ROOT=/data/davsean/omicidx_root
 # Or create a .env file in the sqlmesh directory
 variables:
-  data_root: /data/davsean/omicidx_root
+  data_root: {{ env_var('OMICIDX_DATA_ROOT', '/data/davsean/omicidx_root') }}
 
 # --- Linting Rules ---
 # Enforce standards for your team
