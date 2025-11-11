@@ -12,3 +12,5 @@ omicidx_warehouse.duckdb.wal
 exports/
 *.duckdb
 *duckdb.tmp/
+*.sqlite
+logs/
